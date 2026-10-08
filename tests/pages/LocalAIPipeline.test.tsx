@@ -31,6 +31,7 @@ async function expectUsableValidatedFallback(
 ) {
   expect(await screen.findByRole("heading", { name: title })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /start activity/i })).toBeEnabled();
+  expect(screen.queryByText("From your photo")).not.toBeInTheDocument();
   expect(screen.getByRole("note")).toHaveTextContent("Built-in activity · Local AI unavailable");
   expect(screen.queryByText(/generated on this device/i)).not.toBeInTheDocument();
   const mission = getValidatedFallbackMission("simple-steps", "garden", durationMinutes);
@@ -63,7 +64,7 @@ describe("local AI application flow", () => {
       };
       requests.push(request);
       const response = request.model === "qwen2.5vl:3b"
-        ? { response: '{"environment":"garden","features":["flowers","trees"]}' }
+        ? { response: '{"environment":"urban park","features":["open grassy area","trees","shaded seating"],"sensory_character":"calm","general_context":"A leafy public space"}' }
         : { response: JSON.stringify(localMission) };
       return new Response(JSON.stringify(response), { status: 200 });
     }));
@@ -81,13 +82,20 @@ describe("local AI application flow", () => {
     );
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(screen.getByText(localMission.summary)).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Context from your photo" }))
+      .toHaveTextContent("From your photoUrban park · open grassy area · trees");
     expect(screen.getByText("10 min")).toBeInTheDocument();
     expect(screen.getByText("Notice one colour.")).toBeInTheDocument();
     expect(requests.map((request) => request.model)).toEqual(["qwen2.5vl:3b", "gemma3:4b"]);
     expect(requests[0].images).toHaveLength(1);
     expect(JSON.parse(requests[1].prompt)).toMatchObject({
       constraints: { mode: "simple-steps", durationMinutes: 10 },
-      scene: { environment: "garden", features: ["flowers", "trees"] },
+      scene: {
+        environment: "urban park",
+        features: ["open grassy area", "trees", "shaded seating"],
+        sensory_character: "calm",
+        general_context: "A leafy public space",
+      },
     });
   });
 
@@ -122,6 +130,7 @@ describe("local AI application flow", () => {
     await user.click(screen.getByRole("button", { name: /continue/i }));
 
     expect(await screen.findByRole("heading", { name: localMission.title })).toBeInTheDocument();
+    expect(screen.queryByText("From your photo")).not.toBeInTheDocument();
     expect(screen.getByRole("note")).toHaveTextContent(
       "Local AI · Generated on this device",
     );
@@ -130,6 +139,31 @@ describe("local AI application flow", () => {
     );
     expect(requests.map((request) => request.model)).toEqual(["qwen2.5vl:3b", "gemma3:4b"]);
     expect(JSON.parse(requests[1].prompt).scene).toMatchObject({ environment: "garden" });
+  });
+
+  it("does not surface disallowed photo context after manual recovery", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      const request = JSON.parse(String(init?.body)) as { model: string };
+      const response = request.model === "qwen2.5vl:3b"
+        ? { response: '{"environment":"safe garden","features":["flowers"]}' }
+        : { response: JSON.stringify(localMission) };
+      return new Response(JSON.stringify(response), { status: 200 });
+    }));
+
+    const user = userEvent.setup();
+    render(<App aiMode="local" />);
+    await selectPreferences(user);
+    await user.upload(
+      screen.getByLabelText(/tap to upload a photo/i),
+      new File(["garden image"], "garden.png", { type: "image/png" }),
+    );
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+
+    expect(await screen.findByRole("heading", { name: localMission.title })).toBeInTheDocument();
+    expect(screen.queryByText("From your photo")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "The photo could not be used, so this activity was created using your selected environment.",
+    );
   });
 
   it("uses a validated fallback when vision fails without a valid manual environment", async () => {
@@ -153,6 +187,8 @@ describe("local AI application flow", () => {
     expect(MissionSchema.safeParse(result.mission).success).toBe(true);
     expect(validateSafety(result.mission).safe).toBe(true);
     expect(result.mission.durationMinutes).toBe(10);
+    expect(result.scene).toBeUndefined();
+    expect(result.sceneSource).toBeUndefined();
   });
 
   it.each([
@@ -218,6 +254,7 @@ describe("local AI application flow", () => {
     await user.click(screen.getByRole("button", { name: /continue/i }));
 
     expect(await screen.findByRole("heading", { name: localMission.title })).toBeInTheDocument();
+    expect(screen.queryByText("From your photo")).not.toBeInTheDocument();
     expect(requests.map((request) => request.model)).toEqual(["gemma3:4b"]);
   });
 });

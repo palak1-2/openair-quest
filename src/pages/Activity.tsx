@@ -14,7 +14,7 @@
  */
 import type { JSX } from "react";
 import type { ActivityRuntime } from "@/ai/providerFactory";
-import type { AccessibilityMode, DurationMinutes, EnvironmentOption, Mission } from "@/types";
+import type { AccessibilityMode, DurationMinutes, EnvironmentOption, Mission, SceneContext } from "@/types";
 
 interface SessionSnapshot {
   mode: AccessibilityMode | null;
@@ -26,6 +26,8 @@ interface SessionSnapshot {
   usedLocalFallback?: boolean;
   usedManualEnvironmentRecovery?: boolean;
   runtimeProvider?: ActivityRuntime | null;
+  scene?: SceneContext | null;
+  sceneSource?: "vision" | "manual" | null;
 }
 
 interface ActivityProps {
@@ -33,6 +35,17 @@ interface ActivityProps {
   onStart: () => void;
   onRestart: () => void;
   onBack: () => void;
+}
+
+const SPECIFIC_ENVIRONMENT_TERMS =
+  /\b(courtyard|arboretum|botanical garden|greenhouse|plaza|terrace|playground)\b/i;
+
+function formatVisionContext(scene: SceneContext): string {
+  const rawEnvironment = scene.environment.trim();
+  const environment = rawEnvironment.charAt(0).toLocaleUpperCase() + rawEnvironment.slice(1);
+  const environmentIsDescriptive = SPECIFIC_ENVIRONMENT_TERMS.test(environment);
+  const features = environmentIsDescriptive ? [] : scene.features.slice(0, 2);
+  return [environment, ...features].join(" · ");
 }
 
 export function Activity({ session, onStart, onRestart, onBack }: ActivityProps): JSX.Element {
@@ -86,6 +99,22 @@ export function Activity({ session, onStart, onRestart, onBack }: ActivityProps)
           <div className="banner banner--info" role="status" style={{ marginBottom: "var(--space-6)" }}>
             The photo could not be used, so this activity was created using your selected environment.
           </div>
+        )}
+
+        {session.sceneSource === "vision" && session.scene && (
+          <section
+            aria-label="Context from your photo"
+            style={{
+              marginBottom: "var(--space-6)",
+              color: "var(--color-text-muted)",
+              fontSize: "var(--font-size-sm)",
+            }}
+          >
+            <p style={{ fontWeight: "var(--font-weight-semi)", marginBottom: "var(--space-1)" }}>
+              From your photo
+            </p>
+            <p>{formatVisionContext(session.scene)}</p>
+          </section>
         )}
 
         {/* Meta row */}

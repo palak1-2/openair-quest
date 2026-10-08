@@ -1,4 +1,4 @@
-import type { LocalVisionProvider } from "@/ai/AIProvider";
+import type { LocalVisionProvider, VisionAnalysis } from "@/ai/AIProvider";
 import { extractJSON } from "@/ai/extractJSON";
 import { getManualSceneContext } from "@/ai/manualScene";
 import { VISION_SYSTEM_PROMPT } from "@/ai/prompts/visionPrompt";
@@ -42,10 +42,10 @@ export class OllamaVisionProvider implements LocalVisionProvider {
     this.client = client;
   }
 
-  async analyze(image: Blob | undefined, manualEnvironment: string): Promise<SceneContext> {
+  async analyze(image: Blob | undefined, manualEnvironment: string): Promise<VisionAnalysis> {
     if (!image) {
       console.info("[OpenAir Quest][AI] Vision skipped; using manual environment context.");
-      return getManualSceneContext(manualEnvironment);
+      return { scene: getManualSceneContext(manualEnvironment), source: "manual" };
     }
 
     try {
@@ -89,7 +89,7 @@ export class OllamaVisionProvider implements LocalVisionProvider {
         throw new LocalAIProviderError("The local vision model returned disallowed scene claims.");
       }
       console.info("[OpenAir Quest][AI] Vision request completed.");
-      return scene;
+      return { scene, source: "vision" };
     } catch (error) {
       console.error("[OpenAir Quest][AI] Vision request failed.", {
         error,

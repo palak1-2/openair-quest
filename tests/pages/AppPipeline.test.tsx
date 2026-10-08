@@ -50,4 +50,26 @@ describe("mock AI activity flow", () => {
     expect(screen.getByText(/no activities yet/i)).toBeInTheDocument();
     expect(getHistory()).toEqual([]);
   });
+
+  it("does not describe a photo as analyzed in mock mode", async () => {
+    const user = userEvent.setup();
+    render(<App aiMode="mock" />);
+
+    await user.click(screen.getByRole("button", { name: /start openair quest/i }));
+    await user.click(screen.getByRole("radio", { name: /quiet/i }));
+    await user.click(screen.getByRole("radio", { name: /10 min/i }));
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("radio", { name: /garden/i }));
+    await user.upload(
+      screen.getByLabelText(/tap to upload a photo/i),
+      new File(["garden image"], "garden.png", { type: "image/png" }),
+    );
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+
+    expect(await screen.findByRole("heading", { name: "Outdoor Noticing" })).toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "Demo mode · Deterministic activity",
+    );
+    expect(screen.queryByText("From your photo")).not.toBeInTheDocument();
+  });
 });

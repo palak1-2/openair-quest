@@ -31,13 +31,15 @@ describe("Mock AI providers", () => {
     const first = await provider.analyze(undefined, environment);
     const second = await provider.analyze(undefined, environment);
     expect(first).toEqual(second);
-    expect(first.environment).toBe(environment === "not-sure" ? "outdoor area" : environment);
-    expect(first.features.length).toBeGreaterThan(0);
+    expect(first.source).toBe("manual");
+    expect(first.scene.environment).toBe(environment === "not-sure" ? "outdoor area" : environment);
+    expect(first.scene.features.length).toBeGreaterThan(0);
   });
 
   it("does not claim to analyze a supplied image", async () => {
     const scene = await new MockVisionProvider().analyze(new Blob(["image"]), "garden");
-    expect(scene.general_context).toMatch(/image was not analyzed/i);
+    expect(scene.source).toBe("manual");
+    expect(scene.scene.general_context).toMatch(/image was not analyzed/i);
   });
 
   it.each(modes)("generates a valid mission for %s mode", async (mode) => {
@@ -100,7 +102,7 @@ describe("mission pipeline validation", () => {
 
   it("uses fallback if the scene provider returns invalid context", async () => {
     const invalidVision: LocalVisionProvider = {
-      analyze: async () => ({ environment: "", features: [] }),
+      analyze: async () => ({ scene: { environment: "", features: [] }, source: "vision" }),
     };
     const mission = await generateMissionPipeline(preferences(), invalidVision);
     expect(mission.title).toBe("Quiet Nature Observation");

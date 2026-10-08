@@ -1,4 +1,4 @@
-import type { LocalLLMProvider, LocalVisionProvider } from "@/ai/AIProvider";
+import type { LocalLLMProvider, LocalVisionProvider, VisionAnalysis } from "@/ai/AIProvider";
 import { buildConstraints } from "@/accessibility/accessibilityEngine";
 import { normaliseEnvironment } from "@/accessibility/constraints";
 import { getValidatedFallbackMission } from "@/fallback/fallbackMissions";
@@ -31,14 +31,15 @@ function hasManualEnvironment(environment: unknown): environment is EnvironmentO
 }
 
 export class MockVisionProvider implements LocalVisionProvider {
-  async analyze(image: Blob | undefined, manualEnvironment: string): Promise<SceneContext> {
+  async analyze(image: Blob | undefined, manualEnvironment: string): Promise<VisionAnalysis> {
     const environment = getManualSceneContext(manualEnvironment);
-    return image
+    const scene = image
       ? {
           ...environment,
           general_context: "Deterministic mock context from the selected environment; the image was not analyzed.",
         }
       : environment;
+    return { scene, source: "manual" };
   }
 }
 
@@ -133,6 +134,8 @@ export interface MissionPipelineResult {
   mission: Mission;
   usedFallback: boolean;
   usedManualEnvironmentRecovery?: boolean;
+  scene?: SceneContext;
+  sceneSource?: "vision" | "manual";
 }
 
 export async function generateMissionPipelineWithFallback(
@@ -147,13 +150,16 @@ export async function generateMissionPipelineWithFallback(
     imageSelected: preferences.photo !== undefined,
   });
   let usedManualEnvironmentRecovery = false;
+  let sceneSource: "vision" | "manual" = "manual";
   try {
     console.info("[OpenAir Quest][AI] Vision stage started.", {
       imageSelected: preferences.photo !== undefined,
     });
     let scene: SceneContext;
     try {
-      scene = await vision.analyze(preferences.photo, preferences.environment);
+      const analysis = await vision.analyze(preferences.photo, preferences.environment);
+      scene = analysis.scene;
+      sceneSource = preferences.photo ? analysis.source : "manual";
       console.info("[OpenAir Quest][AI] Vision stage completed.");
     } catch (error: unknown) {
       if (!preferences.photo || !hasManualEnvironment(preferences.environment)) {
@@ -162,6 +168,7 @@ export async function generateMissionPipelineWithFallback(
       console.warn("[OpenAir Quest][AI] Vision failed; continuing with manual environment context.");
       usedManualEnvironmentRecovery = true;
       scene = getManualSceneContext(preferences.environment);
+      sceneSource = "manual";
     }
 
     let validatedScene = SceneSchema.safeParse(scene);
@@ -170,6 +177,7 @@ export async function generateMissionPipelineWithFallback(
         console.warn("[OpenAir Quest][AI] Vision returned invalid scene data; continuing with manual environment context.");
         usedManualEnvironmentRecovery = true;
         scene = getManualSceneContext(preferences.environment);
+        sceneSource = "manual";
         validatedScene = SceneSchema.safeParse(scene);
       }
       if (!validatedScene.success) {
@@ -250,6 +258,8 @@ export async function generateMissionPipelineWithFallback(
       mission: validatedMission.data,
       usedFallback: false,
       usedManualEnvironmentRecovery,
+      scene: validatedScene.data,
+      sceneSource,
     };
   } catch (error: unknown) {
     console.error("[OpenAir Quest][AI] Provider pipeline failed; using built-in fallback.", {

@@ -38,8 +38,11 @@ describe("OllamaVisionProvider", () => {
     );
 
     expect(scene).toEqual({
-      environment: "garden",
-      features: ["trees", "open grassy area"],
+      scene: {
+        environment: "garden",
+        features: ["trees", "open grassy area"],
+      },
+      source: "vision",
     });
     expect(client.generate).toHaveBeenCalledWith(expect.objectContaining({
       model: "qwen2.5vl:3b",
@@ -51,7 +54,8 @@ describe("OllamaVisionProvider", () => {
   it("does not call the vision model when there is no image", async () => {
     const client = new FakeOllamaClient();
     const scene = await new OllamaVisionProvider(client).analyze(undefined, "campus");
-    expect(scene.environment).toBe("campus");
+    expect(scene.scene.environment).toBe("campus");
+    expect(scene.source).toBe("manual");
     expect(client.generate).not.toHaveBeenCalled();
   });
 
@@ -279,11 +283,13 @@ describe("OllamaLLMProvider", () => {
     client.generate.mockResolvedValueOnce(JSON.stringify(unsafe)).mockResolvedValueOnce(JSON.stringify(unsafe));
     const result = await generateMissionPipelineWithFallback(
       { mode: "quiet", durationMinutes: 10, environment: "garden" },
-      { analyze: async () => ({ environment: "garden", features: ["trees"] }) },
+      { analyze: async () => ({ scene: { environment: "garden", features: ["trees"] }, source: "vision" as const }) },
       new OllamaLLMProvider(client),
     );
     expect(client.generate).toHaveBeenCalledTimes(2);
     expect(result.usedFallback).toBe(true);
+    expect(result.scene).toBeUndefined();
+    expect(result.sceneSource).toBeUndefined();
     expect(MissionSchema.safeParse(result.mission).success).toBe(true);
     expect(validateSafety(result.mission).safe).toBe(true);
     expect(result.mission.durationMinutes).toBe(10);
@@ -332,6 +338,8 @@ describe("local provider pipeline", () => {
 
     expect(result.usedFallback).toBe(false);
     expect(result.mission.title).toBe(mission.title);
+    expect(result.sceneSource).toBe("vision");
+    expect(result.scene).toMatchObject({ environment: "garden", features: ["trees"] });
     expect(missionClient.generate).toHaveBeenCalledWith(expect.objectContaining({
       model: "gemma3:4b",
       prompt: expect.stringContaining('"environment":"NATURAL_SPACE"'),
@@ -359,6 +367,7 @@ describe("local provider pipeline", () => {
     );
 
     expect(result.usedFallback).toBe(false);
+    expect(result.sceneSource).toBe("manual");
     expect(visionClient.generate).not.toHaveBeenCalled();
     expect(JSON.parse(missionClient.generate.mock.calls[0][0].prompt).scene)
       .toMatchObject({ environment: "garden" });
@@ -407,6 +416,7 @@ describe("local provider pipeline", () => {
     });
     expect(result.usedFallback).toBe(false);
     expect(result.mission).toEqual(mission);
+    expect(result.sceneSource).toBe("manual");
   });
 
   it("uses a built-in fallback if photo vision fails without a valid manual environment", async () => {
@@ -430,6 +440,8 @@ describe("local provider pipeline", () => {
     expect(vision.analyze).toHaveBeenCalledOnce();
     expect(llm.generateMission).not.toHaveBeenCalled();
     expect(result.usedFallback).toBe(true);
+    expect(result.scene).toBeUndefined();
+    expect(result.sceneSource).toBeUndefined();
     expect(result.mission.title).toBe("Quiet Nature Observation");
     expect(result.mission.durationMinutes).toBe(10);
   });

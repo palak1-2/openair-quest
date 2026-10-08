@@ -12,13 +12,18 @@
  */
 import type { SceneContext, ConstraintObject, Mission, PersonalizationContext } from "@/types";
 
+export interface VisionAnalysis {
+  scene: SceneContext;
+  source: "vision" | "manual";
+}
+
 /**
  * Analyses an optional uploaded image and returns broad environmental context.
  * When no image is provided the provider should return a scene based on
  * the manually selected environment.
  */
 export interface LocalVisionProvider {
-  analyze(image: Blob | undefined, manualEnvironment: string): Promise<SceneContext>;
+  analyze(image: Blob | undefined, manualEnvironment: string): Promise<VisionAnalysis>;
 }
 
 /**

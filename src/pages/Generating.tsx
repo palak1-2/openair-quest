@@ -11,7 +11,7 @@
  */
 import { useEffect, useState } from "react";
 import type { JSX } from "react";
-import type { AccessibilityMode, DurationMinutes, EnvironmentOption, Mission } from "@/types";
+import type { AccessibilityMode, DurationMinutes, EnvironmentOption, Mission, SceneContext } from "@/types";
 import { generateSelectedMission } from "@/ai/providerFactory";
 import type { ActivityRuntime, AIMode } from "@/ai/providerFactory";
 
@@ -32,6 +32,8 @@ interface GeneratingProps {
     usedLocalFallback: boolean,
     usedManualEnvironmentRecovery: boolean,
     runtimeProvider: ActivityRuntime,
+    scene?: SceneContext,
+    sceneSource?: "vision" | "manual",
   ) => void;
   onError: () => void;
   aiMode: AIMode;
@@ -65,10 +67,24 @@ export function Generating({ session, onComplete, onError, aiMode }: GeneratingP
       durationMinutes: session.durationMinutes,
       environment: session.environment,
       photo: session.photo,
-    }, aiMode).then(({ mission, usedLocalFallback, usedManualEnvironmentRecovery, runtimeProvider }) => {
+    }, aiMode).then(({
+      mission,
+      usedLocalFallback,
+      usedManualEnvironmentRecovery,
+      runtimeProvider,
+      scene,
+      sceneSource,
+    }) => {
       if (active) {
         console.info("[OpenAir Quest][FLOW] Mission pipeline returned.", { usedLocalFallback });
-        onComplete(mission, usedLocalFallback, usedManualEnvironmentRecovery, runtimeProvider);
+        onComplete(
+          mission,
+          usedLocalFallback,
+          usedManualEnvironmentRecovery,
+          runtimeProvider,
+          scene,
+          sceneSource,
+        );
       }
     }).catch((error: unknown) => {
       console.error("[OpenAir Quest][FLOW] Mission pipeline rejected unexpectedly.", error);

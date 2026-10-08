@@ -10,7 +10,7 @@ import {
 import { getValidatedFallbackMission } from "@/fallback/fallbackMissions";
 import { getHistory } from "@/storage/historyStore";
 import { derivePersonalizationContext } from "@/ai/personalization";
-import type { Mission, UserPreferences } from "@/types";
+import type { Mission, SceneContext, UserPreferences } from "@/types";
 
 export type AIMode = "mock" | "local";
 export type ActivityRuntime = "local-ai" | "mock" | "validated-fallback";
@@ -21,6 +21,8 @@ interface SelectedMissionResult {
   runtimeProvider: ActivityRuntime;
   usedLocalFallback: boolean;
   usedManualEnvironmentRecovery: boolean;
+  scene?: SceneContext;
+  sceneSource?: "vision" | "manual";
 }
 
 export interface AIProviders {

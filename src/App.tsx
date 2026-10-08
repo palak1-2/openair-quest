@@ -34,6 +34,7 @@ import type {
   DurationMinutes,
   EnvironmentOption,
   Mission,
+  SceneContext,
 } from "./types";
 
 /** Aggregated user selections that flow through the pipeline. */
@@ -47,6 +48,8 @@ interface SessionState {
   usedLocalFallback: boolean;
   usedManualEnvironmentRecovery: boolean;
   runtimeProvider: ActivityRuntime | null;
+  scene: SceneContext | null;
+  sceneSource: "vision" | "manual" | null;
 }
 
 const INITIAL_SESSION: SessionState = {
@@ -59,6 +62,8 @@ const INITIAL_SESSION: SessionState = {
   usedLocalFallback: false,
   usedManualEnvironmentRecovery: false,
   runtimeProvider: null,
+  scene: null,
+  sceneSource: null,
 };
 
 export default function App({ aiMode = getConfiguredAIMode() }: { aiMode?: AIMode }): JSX.Element {
@@ -191,6 +196,8 @@ export default function App({ aiMode = getConfiguredAIMode() }: { aiMode?: AIMod
     usedLocalFallback: boolean,
     usedManualEnvironmentRecovery: boolean,
     runtimeProvider: ActivityRuntime,
+    scene?: SceneContext,
+    sceneSource?: "vision" | "manual",
   ) => {
     console.info("[OpenAir Quest][FLOW] Generation completed; opening Activity.", {
       usedLocalFallback,
@@ -201,6 +208,8 @@ export default function App({ aiMode = getConfiguredAIMode() }: { aiMode?: AIMod
       usedLocalFallback,
       usedManualEnvironmentRecovery,
       runtimeProvider,
+      scene: scene ?? null,
+      sceneSource: sceneSource ?? null,
     }));
     goTo("activity");
   }, [goTo]);
