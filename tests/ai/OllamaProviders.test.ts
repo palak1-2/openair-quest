@@ -8,6 +8,8 @@ import type { ConstraintObject, Mission, SceneContext, UserPreferences } from "@
 import type { LocalLLMProvider } from "@/ai/AIProvider";
 import type { PersonalizationContext } from "@/types";
 import { MISSION_SYSTEM_PROMPT } from "@/ai/prompts/missionPrompt";
+import { MissionSchema } from "@/schemas/mission";
+import { validateSafety } from "@/validation/safetyValidator";
 
 const mission: Mission = {
   title: "A Gentle Garden Pause",
@@ -113,41 +115,78 @@ describe("OllamaLLMProvider", () => {
       }),
       prompt: expect.stringContaining('"mode":"quiet"'),
     }));
+    expect(client.generate).toHaveBeenCalledOnce();
   });
 
-  it("rejects malformed mission JSON", async () => {
+  it("repairs malformed mission JSON with exactly one additional model call", async () => {
     const client = new FakeOllamaClient();
-    client.generate.mockResolvedValue("{ nope");
-    await expect(
-      new OllamaLLMProvider(client).generateMission(constraints, scene),
-    ).rejects.toBeInstanceOf(LocalAIProviderError);
+    client.generate.mockResolvedValueOnce("{ nope").mockResolvedValueOnce(JSON.stringify(mission));
+    await expect(new OllamaLLMProvider(client).generateMission(constraints, scene)).resolves.toEqual(mission);
+    expect(client.generate).toHaveBeenCalledTimes(2);
+    const repairRequest = client.generate.mock.calls[1][0];
+    expect(JSON.parse(repairRequest.prompt).validationFailure).toEqual({
+      type: "malformed-json",
+      issues: [{ description: "Response did not contain extractable JSON." }],
+    });
   });
 
-  it("rejects a mission with invalid schema", async () => {
+  it("repairs schema-invalid output using only schema codes and field paths", async () => {
     const client = new FakeOllamaClient();
-    client.generate.mockResolvedValue('{"title":"","steps":[]}');
-    await expect(
-      new OllamaLLMProvider(client).generateMission(constraints, scene),
-    ).rejects.toBeInstanceOf(LocalAIProviderError);
+    const invalidCandidate = '{"title":"","steps":[]}';
+    client.generate.mockResolvedValueOnce(invalidCandidate).mockResolvedValueOnce(JSON.stringify(mission));
+    await expect(new OllamaLLMProvider(client).generateMission(constraints, scene)).resolves.toEqual(mission);
+    expect(client.generate).toHaveBeenCalledTimes(2);
+    const repairPrompt = JSON.parse(client.generate.mock.calls[1][0].prompt);
+    expect(repairPrompt.validationFailure.type).toBe("schema");
+    expect(repairPrompt.validationFailure.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: expect.any(String), path: expect.any(Array) }),
+      ]),
+    );
+    expect(JSON.stringify(repairPrompt.validationFailure)).not.toContain('""');
   });
 
-  it("rejects an unsafe mission", async () => {
+  it("repairs safety-invalid output once and preserves request context without unsafe diagnostics", async () => {
     const client = new FakeOllamaClient();
-    client.generate.mockResolvedValue(JSON.stringify({
+    const unsafeText = "Cross the road to reach the garden.";
+    client.generate.mockResolvedValueOnce(JSON.stringify({
       ...mission,
-      steps: ["Cross the road.", "Notice one colour.", "Listen for one sound."],
-      audioVersion: ["Cross the road.", "Notice one colour.", "Listen for one sound."],
-    }));
-    await expect(
-      new OllamaLLMProvider(client).generateMission(constraints, scene, {
-        evidenceCount: 3,
-        preferredCharacteristics: ["continue-enjoyable-format"],
-        avoidCharacteristics: [],
-        difficultyAdjustment: "maintain",
-        sensoryAdjustment: "neutral",
-        adaptationNotes: ["Prior feedback requests exploration near roads."],
-      }),
-    ).rejects.toBeInstanceOf(LocalAIProviderError);
+      steps: [unsafeText, "Notice one colour.", "Listen for one sound."],
+      audioVersion: [unsafeText, "Notice one colour.", "Listen for one sound."],
+    })).mockResolvedValueOnce(JSON.stringify({ ...mission, title: "A Repaired Garden Pause" }));
+    const personalization: PersonalizationContext = {
+      evidenceCount: 2,
+      preferredCharacteristics: ["low-pressure-pacing"],
+      avoidCharacteristics: ["high-sensory-stimulation"],
+      difficultyAdjustment: "simpler",
+      sensoryAdjustment: "quieter",
+      adaptationNotes: ["Keep steps simple and low-stimulation."],
+    };
+    const result = await new OllamaLLMProvider(client).generateMission(
+      constraints,
+      scene,
+      personalization,
+    );
+    expect(result.title).toBe("A Repaired Garden Pause");
+    expect(client.generate).toHaveBeenCalledTimes(2);
+    const repairRequest = client.generate.mock.calls[1][0];
+    const repairPrompt = JSON.parse(repairRequest.prompt);
+    expect(repairPrompt).toMatchObject({
+      candidate: expect.objectContaining({ steps: expect.arrayContaining([unsafeText]) }),
+      requestedDurationMinutes: 10,
+      constraints,
+      scene,
+      personalization,
+    });
+    expect(repairPrompt.validationFailure.ruleIds).toContain("road_crossing");
+    expect(JSON.stringify(repairPrompt.validationFailure)).not.toContain(unsafeText);
+    expect(JSON.stringify(repairPrompt)).not.toContain("stored history");
+    expect(JSON.stringify(repairPrompt)).not.toContain("image payload");
+    expect(repairPrompt).not.toHaveProperty("history");
+    expect(repairPrompt).not.toHaveProperty("image");
+    expect(repairRequest.system).toContain(
+      "SAFETY > ACCESSIBILITY > USER PREFERENCES > PERSONALIZATION > GENERATIVE FREEDOM",
+    );
   });
 
   it("includes compact personalization in the prompt beneath higher-priority constraints", async () => {
@@ -201,14 +240,19 @@ describe("OllamaLLMProvider", () => {
 
   it("rejects a mission whose duration differs from the requested duration", async () => {
     const client = new FakeOllamaClient();
-    client.generate.mockResolvedValue(JSON.stringify({ ...mission, durationMinutes: 5 }));
+    client.generate
+      .mockResolvedValueOnce(JSON.stringify({ ...mission, durationMinutes: 5 }))
+      .mockResolvedValueOnce(JSON.stringify(mission));
     const result = await new OllamaLLMProvider(client).generateMission(constraints, scene);
     expect(result.durationMinutes).toBe(10);
+    expect(client.generate).toHaveBeenCalledTimes(2);
   });
 
   it("keeps a five-minute request authoritative when the model returns ten", async () => {
     const client = new FakeOllamaClient();
-    client.generate.mockResolvedValue(JSON.stringify({ ...mission, durationMinutes: 10 }));
+    client.generate
+      .mockResolvedValueOnce(JSON.stringify({ ...mission, durationMinutes: 10 }))
+      .mockResolvedValueOnce(JSON.stringify({ ...mission, durationMinutes: 5 }));
     const result = await new OllamaLLMProvider(client).generateMission(
       { ...constraints, durationMinutes: 5 },
       scene,
@@ -222,6 +266,45 @@ describe("OllamaLLMProvider", () => {
       }),
       prompt: expect.stringContaining('"requestedDurationMinutes":5'),
     }));
+    expect(client.generate).toHaveBeenCalledTimes(2);
+  });
+
+  it("uses validated fallback when one repair attempt remains invalid", async () => {
+    const client = new FakeOllamaClient();
+    const unsafe = {
+      ...mission,
+      steps: ["Cross the road.", "Notice one colour.", "Listen for one sound."],
+      audioVersion: ["Cross the road.", "Notice one colour.", "Listen for one sound."],
+    };
+    client.generate.mockResolvedValueOnce(JSON.stringify(unsafe)).mockResolvedValueOnce(JSON.stringify(unsafe));
+    const result = await generateMissionPipelineWithFallback(
+      { mode: "quiet", durationMinutes: 10, environment: "garden" },
+      { analyze: async () => ({ environment: "garden", features: ["trees"] }) },
+      new OllamaLLMProvider(client),
+    );
+    expect(client.generate).toHaveBeenCalledTimes(2);
+    expect(result.usedFallback).toBe(true);
+    expect(MissionSchema.safeParse(result.mission).success).toBe(true);
+    expect(validateSafety(result.mission).safe).toBe(true);
+    expect(result.mission.durationMinutes).toBe(10);
+  });
+
+  it("does not repair transport failures or timeouts", async () => {
+    const client = new FakeOllamaClient();
+    client.generate.mockRejectedValue(new Error("request timed out"));
+    await expect(
+      new OllamaLLMProvider(client).generateMission(constraints, scene),
+    ).rejects.toBeInstanceOf(LocalAIProviderError);
+    expect(client.generate).toHaveBeenCalledOnce();
+  });
+
+  it("never makes more than one repair attempt when responses remain invalid", async () => {
+    const client = new FakeOllamaClient();
+    client.generate.mockResolvedValue("{ invalid");
+    await expect(
+      new OllamaLLMProvider(client).generateMission(constraints, scene),
+    ).rejects.toBeInstanceOf(LocalAIProviderError);
+    expect(client.generate).toHaveBeenCalledTimes(2);
   });
 });
 

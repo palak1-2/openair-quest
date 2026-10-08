@@ -62,3 +62,9 @@ Return only valid JSON matching the following schema exactly:
 }
 
 steps and audioVersion must each have between 3 and 5 items and the same length.`;
+
+export const MISSION_REPAIR_PROMPT = `Repair the supplied Mission candidate using the validation issues.
+Priority order: SAFETY > ACCESSIBILITY > USER PREFERENCES > PERSONALIZATION > GENERATIVE FREEDOM.
+Correct every identified issue while preserving valid intent where possible. Never weaken
+safety rules or accessibility constraints. Return a complete Mission object as only valid
+JSON matching the existing schema, with durationMinutes exactly equal to the requested value.`;
