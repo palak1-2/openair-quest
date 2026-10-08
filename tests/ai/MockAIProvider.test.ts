@@ -6,6 +6,7 @@ import {
   generateMissionPipeline,
 } from "@/ai/MockAIProvider";
 import type { AccessibilityMode, EnvironmentOption, Mission, UserPreferences } from "@/types";
+import type { PersonalizationContext } from "@/types";
 
 const environments: EnvironmentOption[] = [
   "park",
@@ -103,5 +104,109 @@ describe("mission pipeline validation", () => {
     };
     const mission = await generateMissionPipeline(preferences(), invalidVision);
     expect(mission.title).toBe("Quiet Nature Observation");
+  });
+
+  it("preserves current deterministic output when personalization is absent or neutral", async () => {
+    const provider = new MockLLMProvider();
+    const constraints = {
+      mode: "quiet" as const,
+      durationMinutes: 10 as const,
+      environment: "NATURAL_SPACE",
+      avoid: [],
+      instructionStyle: "calm" as const,
+    };
+    const scene = { environment: "garden", features: ["plants"] };
+    const neutral: PersonalizationContext = {
+      evidenceCount: 0,
+      preferredCharacteristics: [],
+      avoidCharacteristics: [],
+      difficultyAdjustment: "neutral",
+      sensoryAdjustment: "neutral",
+      adaptationNotes: [],
+    };
+
+    expect(await provider.generateMission(constraints, scene))
+      .toEqual(await provider.generateMission(constraints, scene, neutral));
+  });
+
+  it("adapts mock steps deterministically without overriding accessibility rules", async () => {
+    const provider = new MockLLMProvider();
+    const mission = await provider.generateMission(
+      {
+        mode: "simple-steps",
+        durationMinutes: 10,
+        environment: "NATURAL_SPACE",
+        avoid: ["roads", "navigation"],
+        instructionStyle: "one-step",
+      },
+      { environment: "garden", features: ["plants"] },
+      {
+        evidenceCount: 2,
+        preferredCharacteristics: [],
+        avoidCharacteristics: ["complex-steps", "high-sensory-stimulation"],
+        difficultyAdjustment: "simpler",
+        sensoryAdjustment: "quieter",
+        adaptationNotes: ["Use simpler steps."],
+      },
+    );
+
+    expect(mission.steps).toEqual([
+      "Pause comfortably.",
+      "Notice one nearby detail.",
+      "Finish whenever you feel ready.",
+    ]);
+    expect(mission.steps.join(" ")).not.toMatch(/navigate|road|listen for a sound/i);
+  });
+
+  it("uses positive enjoyable feedback to preserve a familiar, low-pressure style", async () => {
+    const mission = await new MockLLMProvider().generateMission(
+      {
+        mode: "quiet",
+        durationMinutes: 10,
+        environment: "NATURAL_SPACE",
+        avoid: ["roads", "navigation"],
+        instructionStyle: "calm",
+      },
+      { environment: "garden", features: ["plants"] },
+      {
+        evidenceCount: 2,
+        preferredCharacteristics: ["continue-enjoyable-format"],
+        avoidCharacteristics: [],
+        difficultyAdjustment: "neutral",
+        sensoryAdjustment: "neutral",
+        adaptationNotes: ["Keep the overall activity approachable."],
+      },
+    );
+
+    expect(mission.comfortAdjustment)
+      .toBe("Keep a familiar, enjoyable activity style; pause or stop whenever you wish.");
+  });
+
+  it("passes personalization context through the validated pipeline to the LLM", async () => {
+    const personalization: PersonalizationContext = {
+      evidenceCount: 1,
+      preferredCharacteristics: ["low-pressure-pacing"],
+      avoidCharacteristics: [],
+      difficultyAdjustment: "maintain",
+      sensoryAdjustment: "neutral",
+      adaptationNotes: ["Keep the activity low-pressure."],
+    };
+    let received: PersonalizationContext | undefined;
+    const llm: LocalLLMProvider = {
+      generateMission: async (constraints, scene, context) => {
+        received = context;
+        return await new MockLLMProvider().generateMission(constraints, scene, context);
+      },
+    };
+
+    const mission = await generateMissionPipeline(
+      preferences("garden"),
+      undefined,
+      llm,
+      personalization,
+    );
+
+    expect(received).toEqual(personalization);
+    expect(mission.durationMinutes).toBe(10);
   });
 });

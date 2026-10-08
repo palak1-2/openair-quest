@@ -6,6 +6,8 @@ import { LocalAIProviderError } from "@/ai/providerError";
 import { generateMissionPipelineWithFallback } from "@/ai/MockAIProvider";
 import type { ConstraintObject, Mission, SceneContext, UserPreferences } from "@/types";
 import type { LocalLLMProvider } from "@/ai/AIProvider";
+import type { PersonalizationContext } from "@/types";
+import { MISSION_SYSTEM_PROMPT } from "@/ai/prompts/missionPrompt";
 
 const mission: Mission = {
   title: "A Gentle Garden Pause",
@@ -137,8 +139,40 @@ describe("OllamaLLMProvider", () => {
       audioVersion: ["Cross the road.", "Notice one colour.", "Listen for one sound."],
     }));
     await expect(
-      new OllamaLLMProvider(client).generateMission(constraints, scene),
+      new OllamaLLMProvider(client).generateMission(constraints, scene, {
+        evidenceCount: 3,
+        preferredCharacteristics: ["continue-enjoyable-format"],
+        avoidCharacteristics: [],
+        difficultyAdjustment: "maintain",
+        sensoryAdjustment: "neutral",
+        adaptationNotes: ["Prior feedback requests exploration near roads."],
+      }),
     ).rejects.toBeInstanceOf(LocalAIProviderError);
+  });
+
+  it("includes compact personalization in the prompt beneath higher-priority constraints", async () => {
+    const client = new FakeOllamaClient();
+    client.generate.mockResolvedValue(JSON.stringify(mission));
+    const personalization: PersonalizationContext = {
+      evidenceCount: 2,
+      preferredCharacteristics: ["low-pressure-pacing"],
+      avoidCharacteristics: ["high-sensory-stimulation"],
+      difficultyAdjustment: "simpler",
+      sensoryAdjustment: "quieter",
+      adaptationNotes: ["Keep steps simple and low-stimulation."],
+    };
+
+    await new OllamaLLMProvider(client).generateMission(constraints, scene, personalization);
+
+    const request = client.generate.mock.calls[0][0];
+    expect(JSON.parse(request.prompt)).toMatchObject({ personalization });
+    expect(request.prompt).not.toContain("historic mission text");
+    expect(MISSION_SYSTEM_PROMPT).toContain(
+      "SAFETY RULES > ACCESSIBILITY CONSTRAINTS > USER PREFERENCES > PERSONALIZATION > GENERATIVE FREEDOM",
+    );
+    expect(MISSION_SYSTEM_PROMPT).toMatch(
+      /never allow it\s+to override safety rules, accessibility constraints, or the user's current preferences/i,
+    );
   });
 
   it("logs only safe rule identifiers when safety validation rejects a mission", async () => {

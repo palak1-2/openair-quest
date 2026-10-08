@@ -10,7 +10,7 @@
  *
  * Implemented in Phase 5 (Mock) and Phase 6/7 (real models).
  */
-import type { SceneContext, ConstraintObject, Mission } from "@/types";
+import type { SceneContext, ConstraintObject, Mission, PersonalizationContext } from "@/types";
 
 /**
  * Analyses an optional uploaded image and returns broad environmental context.
@@ -28,5 +28,6 @@ export interface LocalLLMProvider {
   generateMission(
     constraints: ConstraintObject,
     scene: SceneContext,
+    personalization?: PersonalizationContext,
   ): Promise<Mission>;
 }

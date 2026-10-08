@@ -110,6 +110,16 @@ export interface HistoryItem {
   completedAt: string; // ISO 8601
 }
 
+/** Compact, local feedback-derived guidance for future mission generation. */
+export interface PersonalizationContext {
+  evidenceCount: number;
+  preferredCharacteristics: Array<"low-pressure-pacing" | "continue-enjoyable-format">;
+  avoidCharacteristics: Array<"complex-steps" | "high-sensory-stimulation">;
+  difficultyAdjustment: "simpler" | "maintain" | "neutral";
+  sensoryAdjustment: "quieter" | "neutral";
+  adaptationNotes: string[];
+}
+
 // ---------------------------------------------------------------------------
 // App screen navigation
 // ---------------------------------------------------------------------------

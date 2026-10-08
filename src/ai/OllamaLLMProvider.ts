@@ -5,7 +5,7 @@ import type { OllamaClient } from "@/ai/ollamaClient";
 import { LocalOllamaClient } from "@/ai/ollamaClient";
 import { LocalAIProviderError } from "@/ai/providerError";
 import { MissionSchema } from "@/schemas/mission";
-import type { ConstraintObject, Mission, SceneContext } from "@/types";
+import type { ConstraintObject, Mission, PersonalizationContext, SceneContext } from "@/types";
 import type { DurationMinutes } from "@/types";
 import { validateSafety } from "@/validation/safetyValidator";
 
@@ -44,11 +44,13 @@ export class OllamaLLMProvider implements LocalLLMProvider {
   async generateMission(
     constraints: ConstraintObject,
     scene: SceneContext,
+    personalization?: PersonalizationContext,
   ): Promise<Mission> {
     console.info("[OpenAir Quest][AI] LLM request starting.", { model: "gemma3:4b" });
     const prompt = JSON.stringify({
       constraints,
       scene,
+      personalization: personalization ?? null,
       requestedDurationMinutes: constraints.durationMinutes,
       instructions: `Generate one mission following the system rules. Return only Mission JSON. Set durationMinutes to exactly ${constraints.durationMinutes}; do not use another duration.`,
     });

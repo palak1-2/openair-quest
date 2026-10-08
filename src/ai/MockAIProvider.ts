@@ -10,6 +10,7 @@ import type {
   ConstraintObject,
   EnvironmentOption,
   Mission,
+  PersonalizationContext,
   SceneContext,
   UserPreferences,
 } from "@/types";
@@ -44,7 +45,23 @@ export class MockVisionProvider implements LocalVisionProvider {
 function buildSteps(
   mode: AccessibilityMode,
   environment: string,
+  personalization?: PersonalizationContext,
 ): string[] {
+  if (personalization?.difficultyAdjustment === "simpler") {
+    if (mode === "audio-first") {
+      return [
+        "Pause in a comfortable place.",
+        "Notice one nearby detail at your own pace.",
+        "Finish whenever you feel ready.",
+      ];
+    }
+    return [
+      "Pause comfortably.",
+      "Notice one nearby detail.",
+      "Finish whenever you feel ready.",
+    ];
+  }
+
   const environmentLabel: Record<string, string> = {
     NATURAL_SPACE: "natural space",
     URBAN_SPACE: "urban space",
@@ -54,10 +71,11 @@ function buildSteps(
   };
   const place = environmentLabel[environment] ?? "your surroundings";
   const placePhrase = place === "your surroundings" ? place : `the ${place}`;
+  const quietObservation = personalization?.sensoryAdjustment === "quieter";
   if (mode === "audio-first") {
     return [
       `Pause in a comfortable place in ${placePhrase}.`,
-      "Listen for one sound nearby.",
+      quietObservation ? "Notice one nearby detail at your own pace." : "Listen for one sound nearby.",
       "Notice one shape around you.",
       "Notice one colour you enjoy.",
       "Finish whenever you feel ready.",
@@ -76,7 +94,7 @@ function buildSteps(
     `Pause in a comfortable place in ${placePhrase}.`,
     "Notice one plant or natural detail nearby.",
     "Find one gentle colour in your surroundings.",
-    "Listen for a quiet sound.",
+    quietObservation ? "Notice one gentle detail nearby." : "Listen for a quiet sound.",
     "Finish whenever you feel ready.",
   ];
 }
@@ -85,8 +103,9 @@ export class MockLLMProvider implements LocalLLMProvider {
   async generateMission(
     constraints: ConstraintObject,
     scene: SceneContext,
+    personalization?: PersonalizationContext,
   ): Promise<Mission> {
-    const steps = buildSteps(constraints.mode, constraints.environment);
+    const steps = buildSteps(constraints.mode, constraints.environment, personalization);
     const environmentName = scene.environment === "outdoor area"
       ? "your outdoor surroundings"
       : `the ${scene.environment}`;
@@ -97,7 +116,11 @@ export class MockLLMProvider implements LocalLLMProvider {
       durationMinutes: constraints.durationMinutes,
       steps,
       audioVersion: steps.map((step) => step),
-      comfortAdjustment: "Pause or stop whenever you wish; there is no pressure to continue.",
+      comfortAdjustment: personalization?.preferredCharacteristics.includes("low-pressure-pacing")
+        ? "Take your time; pause or stop whenever you wish."
+        : personalization?.preferredCharacteristics.includes("continue-enjoyable-format")
+          ? "Keep a familiar, enjoyable activity style; pause or stop whenever you wish."
+          : "Pause or stop whenever you wish; there is no pressure to continue.",
       safetyNote: "Stay in a place where you feel comfortable and aware of your surroundings.",
     };
   }
@@ -116,6 +139,7 @@ export async function generateMissionPipelineWithFallback(
   preferences: UserPreferences,
   vision: LocalVisionProvider = mockVisionProvider,
   llm: LocalLLMProvider = mockLLMProvider,
+  personalization?: PersonalizationContext,
 ): Promise<MissionPipelineResult> {
   console.info("[OpenAir Quest][AI] Pipeline started.", {
     visionProvider: vision.constructor.name,
@@ -181,7 +205,11 @@ export async function generateMissionPipelineWithFallback(
     }
 
     console.info("[OpenAir Quest][AI] LLM stage started.");
-    const generated = await llm.generateMission(validatedConstraints.data, validatedScene.data);
+    const generated = await llm.generateMission(
+      validatedConstraints.data,
+      validatedScene.data,
+      personalization,
+    );
     console.info("[OpenAir Quest][AI] LLM stage completed.");
     const validatedMission = MissionSchema.safeParse(generated);
     if (!validatedMission.success) {
@@ -243,7 +271,13 @@ export async function generateMissionPipeline(
   preferences: UserPreferences,
   vision: LocalVisionProvider = mockVisionProvider,
   llm: LocalLLMProvider = mockLLMProvider,
+  personalization?: PersonalizationContext,
 ): Promise<Mission> {
-  const { mission } = await generateMissionPipelineWithFallback(preferences, vision, llm);
+  const { mission } = await generateMissionPipelineWithFallback(
+    preferences,
+    vision,
+    llm,
+    personalization,
+  );
   return mission;
 }

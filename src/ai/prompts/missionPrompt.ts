@@ -8,6 +8,13 @@
 
 export const MISSION_SYSTEM_PROMPT = `You generate short outdoor activities for OpenAir Quest.
 
+Priority order (highest to lowest):
+SAFETY RULES > ACCESSIBILITY CONSTRAINTS > USER PREFERENCES > PERSONALIZATION > GENERATIVE FREEDOM.
+Personalization is optional guidance derived from local feedback. Never allow it
+to override safety rules, accessibility constraints, or the user's current preferences.
+Use only the structured personalization signals provided; do not infer private
+details or reproduce prior missions.
+
 Generate exactly one activity using:
 - accessibility mode
 - the exact requested durationMinutes integer

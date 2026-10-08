@@ -8,6 +8,8 @@ import {
   mockVisionProvider,
 } from "@/ai/MockAIProvider";
 import { getValidatedFallbackMission } from "@/fallback/fallbackMissions";
+import { getHistory } from "@/storage/historyStore";
+import { derivePersonalizationContext } from "@/ai/personalization";
 import type { UserPreferences } from "@/types";
 
 export type AIMode = "mock" | "local";
@@ -51,10 +53,12 @@ export async function generateSelectedMission(
   });
   try {
     const providers = createAIProviders(mode);
+    const personalization = derivePersonalizationContext(getHistory(), preferences);
     const result = await generateMissionPipelineWithFallback(
       preferences,
       providers.vision,
       providers.llm,
+      personalization,
     );
     if (result.usedFallback) {
       console.warn("[OpenAir Quest][AI] Pipeline selected a built-in fallback.", { mode });
