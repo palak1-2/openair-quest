@@ -26,7 +26,7 @@ import { Feedback } from "./pages/Feedback";
 import { History } from "./pages/History";
 import { addHistoryItem } from "./storage/historyStore";
 import { getConfiguredAIMode } from "./ai/providerFactory";
-import type { AIMode } from "./ai/providerFactory";
+import type { ActivityRuntime, AIMode } from "./ai/providerFactory";
 
 import type {
   AppScreen,
@@ -46,6 +46,7 @@ interface SessionState {
   historyItemId: string | null;
   usedLocalFallback: boolean;
   usedManualEnvironmentRecovery: boolean;
+  runtimeProvider: ActivityRuntime | null;
 }
 
 const INITIAL_SESSION: SessionState = {
@@ -57,6 +58,7 @@ const INITIAL_SESSION: SessionState = {
   historyItemId: null,
   usedLocalFallback: false,
   usedManualEnvironmentRecovery: false,
+  runtimeProvider: null,
 };
 
 export default function App({ aiMode = getConfiguredAIMode() }: { aiMode?: AIMode }): JSX.Element {
@@ -188,6 +190,7 @@ export default function App({ aiMode = getConfiguredAIMode() }: { aiMode?: AIMod
     mission: Mission,
     usedLocalFallback: boolean,
     usedManualEnvironmentRecovery: boolean,
+    runtimeProvider: ActivityRuntime,
   ) => {
     console.info("[OpenAir Quest][FLOW] Generation completed; opening Activity.", {
       usedLocalFallback,
@@ -197,6 +200,7 @@ export default function App({ aiMode = getConfiguredAIMode() }: { aiMode?: AIMod
       mission,
       usedLocalFallback,
       usedManualEnvironmentRecovery,
+      runtimeProvider,
     }));
     goTo("activity");
   }, [goTo]);

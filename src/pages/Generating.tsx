@@ -13,7 +13,7 @@ import { useEffect, useState } from "react";
 import type { JSX } from "react";
 import type { AccessibilityMode, DurationMinutes, EnvironmentOption, Mission } from "@/types";
 import { generateSelectedMission } from "@/ai/providerFactory";
-import type { AIMode } from "@/ai/providerFactory";
+import type { ActivityRuntime, AIMode } from "@/ai/providerFactory";
 
 interface SessionSnapshot {
   mode: AccessibilityMode | null;
@@ -31,6 +31,7 @@ interface GeneratingProps {
     mission: Mission,
     usedLocalFallback: boolean,
     usedManualEnvironmentRecovery: boolean,
+    runtimeProvider: ActivityRuntime,
   ) => void;
   onError: () => void;
   aiMode: AIMode;
@@ -64,10 +65,10 @@ export function Generating({ session, onComplete, onError, aiMode }: GeneratingP
       durationMinutes: session.durationMinutes,
       environment: session.environment,
       photo: session.photo,
-    }, aiMode).then(({ mission, usedLocalFallback, usedManualEnvironmentRecovery }) => {
+    }, aiMode).then(({ mission, usedLocalFallback, usedManualEnvironmentRecovery, runtimeProvider }) => {
       if (active) {
         console.info("[OpenAir Quest][FLOW] Mission pipeline returned.", { usedLocalFallback });
-        onComplete(mission, usedLocalFallback, usedManualEnvironmentRecovery);
+        onComplete(mission, usedLocalFallback, usedManualEnvironmentRecovery, runtimeProvider);
       }
     }).catch((error: unknown) => {
       console.error("[OpenAir Quest][FLOW] Mission pipeline rejected unexpectedly.", error);
@@ -117,14 +118,15 @@ export function Generating({ session, onComplete, onError, aiMode }: GeneratingP
             : "Preparing your activity…"}
         </p>
 
-        {/* Note about local processing */}
+        {/* Runtime mode is explicit while generation is in progress. */}
         <div
           className="banner banner--info"
           role="note"
           style={{ marginTop: "var(--space-8)", maxWidth: "24rem" }}
         >
-          In local AI mode, an uploaded image is processed by Ollama on this device.
-          Mock mode does not analyze images.
+          {aiMode === "local"
+            ? "Local AI is preparing your activity on this device."
+            : "Demo mode is preparing a deterministic activity. Photos are not analyzed."}
         </div>
       </div>
     </main>

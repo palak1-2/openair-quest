@@ -29,6 +29,9 @@ describe("Generating", () => {
     );
 
     expect(screen.getByText("Preparing your activity…")).toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "Local AI is preparing your activity on this device.",
+    );
     act(() => {
       vi.advanceTimersByTime(15_000);
     });

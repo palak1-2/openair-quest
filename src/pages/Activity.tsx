@@ -13,6 +13,7 @@
  *   - Go back to Environment
  */
 import type { JSX } from "react";
+import type { ActivityRuntime } from "@/ai/providerFactory";
 import type { AccessibilityMode, DurationMinutes, EnvironmentOption, Mission } from "@/types";
 
 interface SessionSnapshot {
@@ -24,6 +25,7 @@ interface SessionSnapshot {
   historyItemId?: string | null;
   usedLocalFallback?: boolean;
   usedManualEnvironmentRecovery?: boolean;
+  runtimeProvider?: ActivityRuntime | null;
 }
 
 interface ActivityProps {
@@ -58,9 +60,25 @@ export function Activity({ session, onStart, onRestart, onBack }: ActivityProps)
           <p className="page__subtitle">{mission.summary}</p>
         </header>
 
-        {session.usedLocalFallback && (
-          <div className="banner banner--info" role="status" style={{ marginBottom: "var(--space-6)" }}>
-            Local AI could not create an activity this time, so a built-in activity is ready.
+        {session.runtimeProvider && (
+          <div
+            className="banner banner--info"
+            role="note"
+            style={{ marginBottom: "var(--space-6)", alignItems: "center" }}
+          >
+            {session.runtimeProvider === "local-ai" ? (
+              <span><strong>Local AI</strong> · Generated on this device</span>
+            ) : session.runtimeProvider === "mock" ? (
+              <span><strong>Demo mode</strong> · Deterministic activity</span>
+            ) : (
+              <span>
+                <strong>Built-in activity</strong>
+                {" · "}
+                {session.usedLocalFallback
+                  ? "Local AI unavailable"
+                  : "Ready-to-use fallback"}
+              </span>
+            )}
           </div>
         )}
 

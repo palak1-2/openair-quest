@@ -31,9 +31,8 @@ async function expectUsableValidatedFallback(
 ) {
   expect(await screen.findByRole("heading", { name: title })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /start activity/i })).toBeEnabled();
-  expect(screen.getByRole("status")).toHaveTextContent(
-    "Local AI could not create an activity this time, so a built-in activity is ready.",
-  );
+  expect(screen.getByRole("note")).toHaveTextContent("Built-in activity · Local AI unavailable");
+  expect(screen.queryByText(/generated on this device/i)).not.toBeInTheDocument();
   const mission = getValidatedFallbackMission("simple-steps", "garden", durationMinutes);
   expect(MissionSchema.safeParse(mission).success).toBe(true);
   expect(validateSafety(mission).safe).toBe(true);
@@ -77,6 +76,9 @@ describe("local AI application flow", () => {
     await user.click(screen.getByRole("button", { name: /continue/i }));
 
     expect(await screen.findByRole("heading", { name: localMission.title })).toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "Local AI · Generated on this device",
+    );
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(screen.getByText(localMission.summary)).toBeInTheDocument();
     expect(screen.getByText("10 min")).toBeInTheDocument();
@@ -120,6 +122,9 @@ describe("local AI application flow", () => {
     await user.click(screen.getByRole("button", { name: /continue/i }));
 
     expect(await screen.findByRole("heading", { name: localMission.title })).toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "Local AI · Generated on this device",
+    );
     expect(screen.getByRole("status")).toHaveTextContent(
       "The photo could not be used, so this activity was created using your selected environment.",
     );

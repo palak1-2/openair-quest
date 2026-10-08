@@ -10,9 +10,18 @@ import {
 import { getValidatedFallbackMission } from "@/fallback/fallbackMissions";
 import { getHistory } from "@/storage/historyStore";
 import { derivePersonalizationContext } from "@/ai/personalization";
-import type { UserPreferences } from "@/types";
+import type { Mission, UserPreferences } from "@/types";
 
 export type AIMode = "mock" | "local";
+export type ActivityRuntime = "local-ai" | "mock" | "validated-fallback";
+
+interface SelectedMissionResult {
+  mission: Mission;
+  usedFallback: boolean;
+  runtimeProvider: ActivityRuntime;
+  usedLocalFallback: boolean;
+  usedManualEnvironmentRecovery: boolean;
+}
 
 export interface AIProviders {
   mode: AIMode;
@@ -46,7 +55,7 @@ export function createAIProviders(mode: AIMode = getConfiguredAIMode()): AIProvi
 export async function generateSelectedMission(
   preferences: UserPreferences,
   mode: AIMode = getConfiguredAIMode(),
-) {
+): Promise<SelectedMissionResult> {
   console.info("[OpenAir Quest][AI] Mission generation requested.", {
     mode,
     imageSelected: preferences.photo !== undefined,
@@ -67,6 +76,11 @@ export async function generateSelectedMission(
     }
     return {
       ...result,
+      runtimeProvider: result.usedFallback
+        ? "validated-fallback"
+        : mode === "local"
+          ? "local-ai"
+          : "mock",
       usedLocalFallback: mode === "local" && result.usedFallback,
       usedManualEnvironmentRecovery: result.usedManualEnvironmentRecovery ?? false,
     };
@@ -83,6 +97,7 @@ export async function generateSelectedMission(
         preferences.environment,
         preferences.durationMinutes,
       ),
+      runtimeProvider: "validated-fallback" as const,
       usedFallback: true,
       usedLocalFallback: mode === "local",
       usedManualEnvironmentRecovery: false,

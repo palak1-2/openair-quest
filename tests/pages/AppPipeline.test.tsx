@@ -19,6 +19,9 @@ describe("mock AI activity flow", () => {
     await user.click(screen.getByRole("button", { name: /continue/i }));
 
     expect(await screen.findByRole("heading", { name: "Listen and Notice" })).toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "Demo mode · Deterministic activity",
+    );
     expect(screen.getByText(/5-minute activity/i)).toBeInTheDocument();
     expect(screen.queryByText(/placeholder mission/i)).not.toBeInTheDocument();
 
