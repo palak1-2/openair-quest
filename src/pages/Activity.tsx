@@ -40,12 +40,22 @@ interface ActivityProps {
 const SPECIFIC_ENVIRONMENT_TERMS =
   /\b(courtyard|arboretum|botanical garden|greenhouse|plaza|terrace|playground)\b/i;
 
+const ACCESSIBILITY_MODE_LABELS: Record<AccessibilityMode, string> = {
+  quiet: "Quiet",
+  "audio-first": "Audio-first",
+  "simple-steps": "Simple steps",
+};
+
 function formatVisionContext(scene: SceneContext): string {
   const rawEnvironment = scene.environment.trim();
   const environment = rawEnvironment.charAt(0).toLocaleUpperCase() + rawEnvironment.slice(1);
   const environmentIsDescriptive = SPECIFIC_ENVIRONMENT_TERMS.test(environment);
   const features = environmentIsDescriptive ? [] : scene.features.slice(0, 2);
   return [environment, ...features].join(" · ");
+}
+
+function formatEnvironment(environment: EnvironmentOption): string {
+  return environment.replace("-", " ");
 }
 
 export function Activity({ session, onStart, onRestart, onBack }: ActivityProps): JSX.Element {
@@ -66,7 +76,7 @@ export function Activity({ session, onStart, onRestart, onBack }: ActivityProps)
     <main className="page" id="main-content" aria-label="Activity preview">
       <div className="container">
         <header className="page__header">
-          <p style={{ color: "var(--color-text-muted)", fontSize: "var(--font-size-sm)", marginBottom: "var(--space-2)" }}>
+          <p className="metadata-label">
             Your activity is ready
           </p>
           <h1 className="page__title">{mission.title}</h1>
@@ -75,9 +85,8 @@ export function Activity({ session, onStart, onRestart, onBack }: ActivityProps)
 
         {session.runtimeProvider && (
           <div
-            className="banner banner--info"
+            className="banner banner--info activity-banner"
             role="note"
-            style={{ marginBottom: "var(--space-6)", alignItems: "center" }}
           >
             {session.runtimeProvider === "local-ai" ? (
               <span><strong>Local AI</strong> · Generated on this device</span>
@@ -96,7 +105,7 @@ export function Activity({ session, onStart, onRestart, onBack }: ActivityProps)
         )}
 
         {session.usedManualEnvironmentRecovery && (
-          <div className="banner banner--info" role="status" style={{ marginBottom: "var(--space-6)" }}>
+          <div className="banner banner--info activity-banner" role="status">
             The photo could not be used, so this activity was created using your selected environment.
           </div>
         )}
@@ -104,13 +113,9 @@ export function Activity({ session, onStart, onRestart, onBack }: ActivityProps)
         {session.sceneSource === "vision" && session.scene && (
           <section
             aria-label="Context from your photo"
-            style={{
-              marginBottom: "var(--space-6)",
-              color: "var(--color-text-muted)",
-              fontSize: "var(--font-size-sm)",
-            }}
+            className="photo-context"
           >
-            <p style={{ fontWeight: "var(--font-weight-semi)", marginBottom: "var(--space-1)" }}>
+            <p className="photo-context__label">
               From your photo
             </p>
             <p>{formatVisionContext(session.scene)}</p>
@@ -118,40 +123,32 @@ export function Activity({ session, onStart, onRestart, onBack }: ActivityProps)
         )}
 
         {/* Meta row */}
-        <div
-          className="card"
-          style={{
-            display: "flex",
-            gap: "var(--space-6)",
-            flexWrap: "wrap",
-            marginBottom: "var(--space-6)",
-          }}
-        >
+        <div className="metadata-row">
           {session.mode && (
             <div>
-              <div style={{ fontSize: "var(--font-size-xs)", color: "var(--color-text-muted)", marginBottom: "var(--space-1)" }}>
+              <div className="metadata-label">
                 Mode
               </div>
-              <div style={{ fontWeight: "var(--font-weight-semi)", textTransform: "capitalize" }}>
-                {session.mode}
+              <div className="metadata-value">
+                {ACCESSIBILITY_MODE_LABELS[session.mode]}
               </div>
             </div>
           )}
           <div>
-            <div style={{ fontSize: "var(--font-size-xs)", color: "var(--color-text-muted)", marginBottom: "var(--space-1)" }}>
+            <div className="metadata-label">
               Duration
             </div>
-            <div style={{ fontWeight: "var(--font-weight-semi)" }}>
+            <div className="metadata-value">
               {mission.durationMinutes} min
             </div>
           </div>
           {session.environment && (
             <div>
-              <div style={{ fontSize: "var(--font-size-xs)", color: "var(--color-text-muted)", marginBottom: "var(--space-1)" }}>
+              <div className="metadata-label">
                 Environment
               </div>
-              <div style={{ fontWeight: "var(--font-weight-semi)", textTransform: "capitalize" }}>
-                {session.environment.replace("-", " ")}
+              <div className="metadata-value" style={{ textTransform: "capitalize" }}>
+                {formatEnvironment(session.environment)}
               </div>
             </div>
           )}
@@ -161,40 +158,22 @@ export function Activity({ session, onStart, onRestart, onBack }: ActivityProps)
         <section aria-labelledby="steps-heading">
           <h2
             id="steps-heading"
-            style={{ fontSize: "var(--font-size-lg)", marginBottom: "var(--space-4)" }}
+            className="section-heading"
           >
             Steps
           </h2>
           <ol
-            style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}
+            className="step-list"
             aria-label="Activity steps"
           >
             {mission.steps.map((step, i) => (
               <li
                 key={i}
-                className="card"
-                style={{
-                  display: "flex",
-                  gap: "var(--space-4)",
-                  alignItems: "flex-start",
-                  padding: "var(--space-4) var(--space-5)",
-                }}
+                className="step-list__item"
               >
                 <span
                   aria-hidden="true"
-                  style={{
-                    flexShrink: 0,
-                    width: "1.75rem",
-                    height: "1.75rem",
-                    borderRadius: "var(--radius-full)",
-                    background: "hsl(152 60% 48% / 0.15)",
-                    color: "var(--color-primary)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "var(--font-size-sm)",
-                    fontWeight: "var(--font-weight-bold)",
-                  }}
+                  className="step-list__number"
                 >
                   {i + 1}
                 </span>

@@ -18,7 +18,7 @@ export function Welcome({ onStart }: WelcomeProps): JSX.Element {
       <div className="container">
         {/* Hero */}
         <header className="page__header">
-          <p className="page__subtitle" aria-hidden="true" style={{ fontSize: "3rem", marginBottom: "1rem" }}>
+          <p className="welcome-mark" aria-hidden="true">
             🌿
           </p>
           <h1 className="page__title">OpenAir Quest</h1>
@@ -29,16 +29,16 @@ export function Welcome({ onStart }: WelcomeProps): JSX.Element {
         </header>
 
         {/* Feature highlights */}
-        <div className="card" style={{ marginBottom: "var(--space-6)" }}>
-          <ul style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+        <div className="card welcome-highlights">
+          <ul className="welcome-highlights__list">
             {[
               { icon: "🔒", text: "Fully offline — no internet required" },
               { icon: "♿", text: "Built for accessibility — quiet, audio, or simple-steps modes" },
               { icon: "🤖", text: "Optional local open-weight AI, with built-in mock activities" },
               { icon: "🌳", text: "Activities adapted to your environment" },
             ].map(({ icon, text }) => (
-              <li key={text} style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-                <span aria-hidden="true" style={{ fontSize: "1.25rem" }}>{icon}</span>
+              <li key={text} className="welcome-highlights__item">
+                <span aria-hidden="true" className="welcome-highlights__icon">{icon}</span>
                 <span>{text}</span>
               </li>
             ))}

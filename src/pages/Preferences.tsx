@@ -61,33 +61,21 @@ export function Preferences({ onComplete, onBack }: PreferencesProps): JSX.Eleme
 
         {/* Accessibility mode */}
         <section aria-labelledby="mode-heading">
-          <h2 id="mode-heading" style={{ marginBottom: "var(--space-4)", fontSize: "var(--font-size-lg)" }}>
+          <h2 id="mode-heading" className="section-heading">
             Accessibility mode
           </h2>
           <div
             role="radiogroup"
             aria-labelledby="mode-heading"
-            style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}
+            className="choice-list"
           >
             {MODES.map(({ value, label, description, icon }) => {
               const isSelected = mode === value;
               return (
                 <label
                   key={value}
-                  className="card"
+                  className={`choice-card${isSelected ? " choice-card--selected" : ""}`}
                   htmlFor={`mode-${value}`}
-                  style={{
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: "var(--space-4)",
-                    border: isSelected
-                      ? "2px solid var(--color-primary)"
-                      : "1px solid var(--color-border)",
-                    boxShadow: isSelected ? "var(--shadow-glow-primary)" : "var(--shadow-md)",
-                    transition: "border var(--transition-fast), box-shadow var(--transition-fast)",
-                    padding: "var(--space-5)",
-                  }}
                 >
                   <input
                     type="radio"
@@ -98,12 +86,12 @@ export function Preferences({ onComplete, onBack }: PreferencesProps): JSX.Eleme
                     onChange={() => setMode(value)}
                     className="sr-only"
                   />
-                  <span aria-hidden="true" style={{ fontSize: "1.5rem", flexShrink: 0 }}>{icon}</span>
+                  <span aria-hidden="true" className="choice-card__icon">{icon}</span>
                   <div>
-                    <div style={{ fontWeight: "var(--font-weight-semi)", marginBottom: "var(--space-1)" }}>
+                    <div className="choice-card__title" style={{ marginBottom: "var(--space-1)" }}>
                       {label}
                     </div>
-                    <div style={{ color: "var(--color-text-muted)", fontSize: "var(--font-size-sm)" }}>
+                    <div className="choice-card__description">
                       {description}
                     </div>
                   </div>
@@ -117,13 +105,13 @@ export function Preferences({ onComplete, onBack }: PreferencesProps): JSX.Eleme
 
         {/* Duration */}
         <section aria-labelledby="duration-heading">
-          <h2 id="duration-heading" style={{ marginBottom: "var(--space-4)", fontSize: "var(--font-size-lg)" }}>
+          <h2 id="duration-heading" className="section-heading">
             Duration
           </h2>
           <div
             role="radiogroup"
             aria-labelledby="duration-heading"
-            style={{ display: "flex", gap: "var(--space-3)" }}
+            className="choice-duration-group"
           >
             {DURATIONS.map(({ value, label }) => {
               const isSelected = duration === value;
@@ -131,21 +119,7 @@ export function Preferences({ onComplete, onBack }: PreferencesProps): JSX.Eleme
                 <label
                   key={value}
                   htmlFor={`duration-${value}`}
-                  style={{
-                    flex: 1,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: "var(--space-4)",
-                    borderRadius: "var(--radius-md)",
-                    border: isSelected
-                      ? "2px solid var(--color-primary)"
-                      : "1px solid var(--color-border)",
-                    background: isSelected ? "hsl(152 60% 48% / 0.1)" : "var(--color-surface)",
-                    cursor: "pointer",
-                    fontWeight: "var(--font-weight-semi)",
-                    transition: "border var(--transition-fast), background var(--transition-fast)",
-                  }}
+                  className={`choice-duration${isSelected ? " choice-duration--selected" : ""}`}
                 >
                   <input
                     type="radio"

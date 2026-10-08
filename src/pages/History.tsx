@@ -49,6 +49,12 @@ function formatFeedback(feedback: HistoryItem["feedback"]): string {
     .join(", ");
 }
 
+function formatMode(mode: HistoryItem["mode"]): string {
+  if (mode === "audio-first") return "Audio-first";
+  if (mode === "simple-steps") return "Simple steps";
+  return "Quiet";
+}
+
 export function History({ onStartNew }: HistoryProps): JSX.Element {
   const [items, setItems] = useState<HistoryItem[]>(getHistory);
 
@@ -67,21 +73,12 @@ export function History({ onStartNew }: HistoryProps): JSX.Element {
 
         {items.length === 0 ? (
           /* Empty state */
-          <div
-            style={{
-              textAlign: "center",
-              padding: "var(--space-12) var(--space-4)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "var(--space-4)",
-            }}
-          >
-            <p aria-hidden="true" style={{ fontSize: "3rem" }}>🌿</p>
-            <p style={{ color: "var(--color-text-muted)", fontSize: "var(--font-size-lg)" }}>
+          <div className="empty-state">
+            <p aria-hidden="true" className="empty-state__icon">🌿</p>
+            <p className="empty-state__title">
               No activities yet.
             </p>
-            <p style={{ color: "var(--color-text-muted)", fontSize: "var(--font-size-sm)", maxWidth: "18rem" }}>
+            <p className="empty-state__description">
               Complete your first activity and it will appear here.
             </p>
           </div>
@@ -89,41 +86,24 @@ export function History({ onStartNew }: HistoryProps): JSX.Element {
           /* History list */
           <ul
             aria-label="Completed activities"
-            style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}
+            className="history-list"
           >
             {items.map((item) => (
-              <li key={item.id} className="card">
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                    gap: "var(--space-4)",
-                    flexWrap: "wrap",
-                    marginBottom: "var(--space-3)",
-                  }}
-                >
-                  <h2
-                    style={{ fontSize: "var(--font-size-base)", fontWeight: "var(--font-weight-semi)" }}
-                  >
+              <li key={item.id} className="history-item">
+                <div className="history-item__header">
+                  <h2 className="history-item__title">
                     {item.mission.title}
                   </h2>
                   <time
                     dateTime={item.completedAt}
-                    style={{ fontSize: "var(--font-size-xs)", color: "var(--color-text-muted)", flexShrink: 0 }}
+                    className="history-item__time"
                   >
                     {formatTimestamp(item.completedAt)}
                   </time>
                 </div>
 
                 <dl
-                  style={{
-                    display: "flex",
-                    gap: "var(--space-6)",
-                    flexWrap: "wrap",
-                    fontSize: "var(--font-size-sm)",
-                    color: "var(--color-text-muted)",
-                  }}
+                  className="history-item__metadata"
                 >
                   <div>
                     <dt className="sr-only">Environment</dt>
@@ -131,7 +111,7 @@ export function History({ onStartNew }: HistoryProps): JSX.Element {
                   </div>
                   <div>
                     <dt className="sr-only">Accessibility mode</dt>
-                    <dd style={{ textTransform: "capitalize" }}>{item.mode}</dd>
+                    <dd>{formatMode(item.mode)}</dd>
                   </div>
                   <div>
                     <dt className="sr-only">Duration</dt>
@@ -152,7 +132,7 @@ export function History({ onStartNew }: HistoryProps): JSX.Element {
           {items.length > 0 && (
             <button
               id="btn-clear-history"
-              className="btn-secondary"
+              className="btn-secondary btn-danger"
               onClick={handleClearHistory}
             >
               Clear history

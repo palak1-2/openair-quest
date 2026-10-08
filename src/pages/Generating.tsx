@@ -98,21 +98,13 @@ export function Generating({ session, onComplete, onError, aiMode }: GeneratingP
   return (
     <main className="page" id="main-content" aria-label="Generating your activity">
       <div
-        className="container"
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          flex: 1,
-        }}
+        className="container centered-content"
       >
         {/* Spinner */}
         <div
-          className="spinner"
+          className="spinner spinner--large"
           role="status"
           aria-label="Loading"
-          style={{ marginBottom: "var(--space-8)", width: "3.5rem", height: "3.5rem" }}
         />
 
         <h1
@@ -124,10 +116,9 @@ export function Generating({ session, onComplete, onError, aiMode }: GeneratingP
 
         {/* Live region for screen readers — updates as pipeline progresses */}
         <p
-          className="status-live"
+          className="status-live content-width--message"
           aria-live="polite"
           aria-atomic="true"
-          style={{ maxWidth: "20rem", textAlign: "center" }}
         >
           {takingLonger
             ? "This is taking a little longer than usual. Please keep this page open."
@@ -136,9 +127,8 @@ export function Generating({ session, onComplete, onError, aiMode }: GeneratingP
 
         {/* Runtime mode is explicit while generation is in progress. */}
         <div
-          className="banner banner--info"
           role="note"
-          style={{ marginTop: "var(--space-8)", maxWidth: "24rem" }}
+          className="banner banner--info content-width--status"
         >
           {aiMode === "local"
             ? "Local AI is preparing your activity on this device."

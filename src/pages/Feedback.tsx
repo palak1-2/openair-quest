@@ -57,14 +57,13 @@ export function Feedback({ historyItemId, onDone, onStartNew }: FeedbackProps): 
     return (
       <main className="page" id="main-content" aria-label="Feedback submitted">
         <div
-          className="container"
-          style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1 }}
+          className="container centered-content"
         >
-          <p aria-hidden="true" style={{ fontSize: "4rem", marginBottom: "var(--space-4)" }}>🌿</p>
-          <h1 className="page__title" style={{ marginBottom: "var(--space-3)", textAlign: "center" }}>
+          <p aria-hidden="true" className="empty-state__icon">🌿</p>
+          <h1 className="page__title feedback-thanks__title">
             Thank you!
           </h1>
-          <p className="page__subtitle" style={{ textAlign: "center", marginBottom: "var(--space-8)" }}>
+          <p className="page__subtitle feedback-thanks__subtitle">
             Your feedback helps improve future activities.
           </p>
           <div className="page__actions">
@@ -94,12 +93,7 @@ export function Feedback({ historyItemId, onDone, onStartNew }: FeedbackProps): 
         <div
           role="group"
           aria-label="Feedback options"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, 1fr)",
-            gap: "var(--space-3)",
-            marginBottom: "var(--space-8)",
-          }}
+          className="choice-grid choice-grid--feedback"
         >
           {FEEDBACK_OPTIONS.map(({ value, label, icon }) => {
             const isSelected = selected.includes(value);
@@ -107,27 +101,12 @@ export function Feedback({ historyItemId, onDone, onStartNew }: FeedbackProps): 
               <button
                 key={value}
                 id={`feedback-${value}`}
-                className="card"
+                className={`choice-card choice-card--feedback${isSelected ? " choice-card--selected" : ""}`}
                 onClick={() => toggleFeedback(value)}
                 aria-pressed={isSelected}
-                style={{
-                  cursor: "pointer",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: "var(--space-2)",
-                  padding: "var(--space-5)",
-                  border: isSelected
-                    ? "2px solid var(--color-primary)"
-                    : "1px solid var(--color-border)",
-                  boxShadow: isSelected ? "var(--shadow-glow-primary)" : "var(--shadow-sm)",
-                  background: isSelected ? "hsl(152 60% 48% / 0.1)" : "var(--color-surface)",
-                  borderRadius: "var(--radius-lg)",
-                  transition: "border var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast)",
-                }}
               >
-                <span aria-hidden="true" style={{ fontSize: "1.75rem" }}>{icon}</span>
-                <span style={{ fontWeight: "var(--font-weight-medium)", fontSize: "var(--font-size-sm)" }}>
+                <span aria-hidden="true" className="choice-card__icon">{icon}</span>
+                <span className="choice-card__label">
                   {label}
                 </span>
               </button>

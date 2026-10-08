@@ -107,8 +107,8 @@ export function ActiveActivity({ session, onComplete, onStop }: ActiveActivityPr
     <main className="page" id="main-content" aria-label="Active activity">
       <div className="container">
         {/* Header */}
-        <header className="page__header" style={{ marginBottom: "var(--space-6)" }}>
-          <h1 className="page__title" style={{ fontSize: "var(--font-size-xl)" }}>
+        <header className="page__header active-activity__header">
+          <h1 className="page__title active-activity__title">
             {session.mission?.title}
           </h1>
         </header>
@@ -133,23 +133,12 @@ export function ActiveActivity({ session, onComplete, onStop }: ActiveActivityPr
 
         {/* Current step */}
         <div
-          className="card"
-          style={{
-            minHeight: "10rem",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            textAlign: "center",
-            padding: "var(--space-8)",
-            marginBottom: "var(--space-6)",
-            border: "1px solid var(--color-primary)",
-            boxShadow: "var(--shadow-glow-primary)",
-          }}
+          className="active-step"
         >
           <p
             aria-live="polite"
             aria-atomic="true"
-            style={{ fontSize: "var(--font-size-xl)", lineHeight: "var(--line-height-base)" }}
+            className="active-step__text"
           >
             {steps[currentIndex]}
           </p>
@@ -158,13 +147,7 @@ export function ActiveActivity({ session, onComplete, onStop }: ActiveActivityPr
         {/* Audio-first speech controls */}
         {isAudioFirst && (
           <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "var(--space-3)",
-              justifyContent: "center",
-              marginBottom: "var(--space-6)",
-            }}
+            className="activity-audio-controls"
             role="group"
             aria-label="Audio controls"
           >
@@ -197,11 +180,10 @@ export function ActiveActivity({ session, onComplete, onStop }: ActiveActivityPr
               ⏹ Stop
             </button>
             <span
-              className={speechSupported ? "sr-only" : undefined}
               role="status"
               aria-live="polite"
               aria-atomic="true"
-              style={!speechSupported ? { flexBasis: "100%", textAlign: "center" } : undefined}
+              className={!speechSupported ? "activity-audio-controls__status" : "sr-only"}
             >
               {!speechSupported
                 ? "Speech playback is not available in this browser. You can follow the written steps and use the buttons below."
@@ -220,12 +202,7 @@ export function ActiveActivity({ session, onComplete, onStop }: ActiveActivityPr
 
         {/* Step navigation */}
         <div
-          style={{
-            display: "flex",
-            gap: "var(--space-4)",
-            justifyContent: "center",
-            marginBottom: "var(--space-4)",
-          }}
+          className="activity-controls"
         >
           <button
             id="btn-prev-step"
@@ -246,7 +223,6 @@ export function ActiveActivity({ session, onComplete, onStop }: ActiveActivityPr
                 onComplete();
               }}
               aria-label="Complete activity"
-              style={{ minWidth: "9rem" }}
             >
               Complete ✓
             </button>
@@ -256,7 +232,6 @@ export function ActiveActivity({ session, onComplete, onStop }: ActiveActivityPr
               className="btn-primary"
               onClick={goNext}
               aria-label="Go to next step"
-              style={{ minWidth: "9rem" }}
             >
               Next →
             </button>
@@ -264,7 +239,7 @@ export function ActiveActivity({ session, onComplete, onStop }: ActiveActivityPr
         </div>
 
         {/* Stop button */}
-        <div style={{ textAlign: "center" }}>
+        <div className="activity-stop">
           <button
             id="btn-stop-activity"
             className="btn-secondary"

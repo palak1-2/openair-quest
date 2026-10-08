@@ -79,12 +79,8 @@ export function Environment({ onComplete, onBack }: EnvironmentProps): JSX.Eleme
           <div
             role="radiogroup"
             aria-labelledby="env-heading"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-              gap: "var(--space-3)",
-              marginBottom: "var(--space-6)",
-            }}
+            className="choice-grid"
+            style={{ marginBottom: "var(--space-6)" }}
           >
             {ENVIRONMENTS.map(({ value, label, icon }) => {
               const isSelected = environment === value;
@@ -92,21 +88,7 @@ export function Environment({ onComplete, onBack }: EnvironmentProps): JSX.Eleme
                 <label
                   key={value}
                   htmlFor={`env-${value}`}
-                  className="card"
-                  style={{
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: "var(--space-2)",
-                    padding: "var(--space-5)",
-                    border: isSelected
-                      ? "2px solid var(--color-primary)"
-                      : "1px solid var(--color-border)",
-                    boxShadow: isSelected ? "var(--shadow-glow-primary)" : "var(--shadow-sm)",
-                    textAlign: "center",
-                    transition: "border var(--transition-fast), box-shadow var(--transition-fast)",
-                  }}
+                  className={`choice-card choice-card--environment${isSelected ? " choice-card--selected" : ""}`}
                 >
                   <input
                     type="radio"
@@ -117,8 +99,8 @@ export function Environment({ onComplete, onBack }: EnvironmentProps): JSX.Eleme
                     onChange={() => setEnvironment(value)}
                     className="sr-only"
                   />
-                  <span aria-hidden="true" style={{ fontSize: "2rem" }}>{icon}</span>
-                  <span style={{ fontWeight: "var(--font-weight-medium)" }}>{label}</span>
+                  <span aria-hidden="true" className="choice-card__icon">{icon}</span>
+                  <span className="choice-card__label">{label}</span>
                 </label>
               );
             })}
@@ -129,10 +111,10 @@ export function Environment({ onComplete, onBack }: EnvironmentProps): JSX.Eleme
 
         {/* Optional photo upload */}
         <section aria-labelledby="photo-heading">
-          <h2 id="photo-heading" style={{ marginBottom: "var(--space-2)", fontSize: "var(--font-size-lg)" }}>
+          <h2 id="photo-heading" className="section-heading section-heading--compact">
             Optional photo
           </h2>
-          <p style={{ color: "var(--color-text-muted)", fontSize: "var(--font-size-sm)", marginBottom: "var(--space-4)" }}>
+          <p className="choice-card__description" style={{ marginBottom: "var(--space-4)" }}>
             In local AI mode, an uploaded photo is processed by Ollama on this
             device. In mock mode, photos are not analyzed. Activities can also
             use your manual environment selection without a photo.
@@ -147,22 +129,11 @@ export function Environment({ onComplete, onBack }: EnvironmentProps): JSX.Eleme
           {!photo ? (
             <label
               htmlFor="photo-upload"
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "var(--space-3)",
-                padding: "var(--space-8)",
-                border: "2px dashed var(--color-border)",
-                borderRadius: "var(--radius-lg)",
-                cursor: "pointer",
-                color: "var(--color-text-muted)",
-                transition: "border-color var(--transition-fast), color var(--transition-fast)",
-              }}
+              className="photo-upload"
             >
-              <span aria-hidden="true" style={{ fontSize: "2rem" }}>📷</span>
+              <span aria-hidden="true" className="choice-card__icon">📷</span>
               <span>Tap to upload a photo (optional)</span>
-              <span style={{ fontSize: "var(--font-size-xs)" }}>JPEG, PNG, WebP or GIF · max 10 MB</span>
+              <span className="photo-upload__hint">JPEG, PNG, WebP or GIF · max 10 MB</span>
               <input
                 type="file"
                 id="photo-upload"
@@ -174,15 +145,10 @@ export function Environment({ onComplete, onBack }: EnvironmentProps): JSX.Eleme
               />
             </label>
           ) : (
-            <div
-              className="card"
-              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-4)" }}
-            >
+            <div className="card photo-file">
               <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
                 <span aria-hidden="true">🖼️</span>
-                <span
-                  style={{ fontSize: "var(--font-size-sm)", color: "var(--color-text-muted)", wordBreak: "break-all" }}
-                >
+                <span className="photo-file__name">
                   {photoName}
                 </span>
               </div>
