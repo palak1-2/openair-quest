@@ -18,7 +18,7 @@ describe("mock AI activity flow", () => {
     await user.click(screen.getByRole("radio", { name: /park/i }));
     await user.click(screen.getByRole("button", { name: /prepare my quest/i }));
 
-    expect(await screen.findByRole("heading", { name: "Listen and Notice" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Park Noticing" })).toBeInTheDocument();
     expect(screen.getByRole("note")).toHaveTextContent(
       "Demo mode · Deterministic activity",
     );
@@ -26,7 +26,7 @@ describe("mock AI activity flow", () => {
     expect(screen.queryByText(/placeholder mission/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /begin quest/i }));
-    expect(screen.getByText("Pause in a comfortable place in the natural space.")).toBeInTheDocument();
+    expect(screen.getByText("Pause where you are in the park.")).toBeInTheDocument();
     for (let step = 0; step < 4; step += 1) {
       await user.click(screen.getByRole("button", { name: /next/i }));
     }
@@ -37,13 +37,13 @@ describe("mock AI activity flow", () => {
     const saved = getHistory()[0];
     expect(saved.mode).toBe("audio-first");
     expect(saved.environment).toBe("park");
-    expect(saved.mission.title).toBe("Listen and Notice");
+    expect(saved.mission.title).toBe("Park Noticing");
     expect(saved.completedAt).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: /comfortable/i }));
     await user.click(screen.getByRole("button", { name: /^done/i }));
     await user.click(await screen.findByRole("button", { name: /view your journal/i }));
-    expect(await screen.findByRole("heading", { name: "Listen and Notice" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Park Noticing" })).toBeInTheDocument();
     expect(screen.getByText(/comfortable/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /clear journal/i }));
@@ -66,10 +66,13 @@ describe("mock AI activity flow", () => {
     );
     await user.click(screen.getByRole("button", { name: /prepare my quest/i }));
 
-    expect(await screen.findByRole("heading", { name: "Outdoor Noticing" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Garden Noticing" })).toBeInTheDocument();
     expect(screen.getByRole("note")).toHaveTextContent(
       "Demo mode · Deterministic activity",
     );
     expect(screen.queryByText("From your photo")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "The photo was not analyzed, so this quest follows the environment you selected.",
+    );
   });
 });

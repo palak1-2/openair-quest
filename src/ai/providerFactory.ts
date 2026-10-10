@@ -4,11 +4,13 @@ import { OllamaVisionProvider } from "@/ai/OllamaVisionProvider";
 import { LocalOllamaClient } from "@/ai/ollamaClient";
 import {
   generateMissionPipelineWithFallback,
+  type MissionFallbackReason,
   mockLLMProvider,
   mockVisionProvider,
 } from "@/ai/MockAIProvider";
 import type { MissionGenerationStage } from "@/ai/MockAIProvider";
 import { getValidatedFallbackMission } from "@/fallback/fallbackMissions";
+import { getManualSceneContext } from "@/ai/manualScene";
 import { getHistory } from "@/storage/historyStore";
 import { derivePersonalizationContext } from "@/ai/personalization";
 import type { Mission, SceneContext, UserPreferences } from "@/types";
@@ -22,6 +24,7 @@ interface SelectedMissionResult {
   runtimeProvider: ActivityRuntime;
   usedLocalFallback: boolean;
   usedManualEnvironmentRecovery: boolean;
+  fallbackReason?: MissionFallbackReason;
   scene?: SceneContext;
   sceneSource?: "vision" | "manual";
 }
@@ -105,7 +108,12 @@ export async function generateSelectedMission(
       runtimeProvider: "validated-fallback" as const,
       usedFallback: true,
       usedLocalFallback: mode === "local",
-      usedManualEnvironmentRecovery: false,
+      usedManualEnvironmentRecovery: preferences.photo !== undefined,
+      fallbackReason: "provider-unavailable",
+      scene: typeof preferences.environment === "string"
+        ? getManualSceneContext(preferences.environment)
+        : undefined,
+      sceneSource: typeof preferences.environment === "string" ? "manual" : undefined,
     };
   }
 }

@@ -45,57 +45,68 @@ export class MockVisionProvider implements LocalVisionProvider {
 
 function buildSteps(
   mode: AccessibilityMode,
-  environment: string,
+  scene: SceneContext,
   personalization?: PersonalizationContext,
 ): string[] {
+  const environment = scene.environment.toLowerCase();
+  const place = environment.includes("campus") || environment.includes("university") ||
+      environment.includes("school") || environment.includes("college")
+    ? {
+        name: "Campus",
+        opening: "Pause where you are on campus.",
+        focus: "Notice a nearby building's shape.",
+        detail: "Find a change in colour or light around you.",
+      }
+    : environment.includes("garden")
+      ? {
+          name: "Garden",
+          opening: "Pause where you are in the garden.",
+          focus: "Notice a leaf, flower, or plant nearby.",
+          detail: "Look for a small difference in shape or colour.",
+        }
+      : environment.includes("neighborhood") || environment.includes("neighbourhood")
+        ? {
+            name: "Neighborhood",
+            opening: "Pause where you are in your neighborhood.",
+            focus: "Notice a repeating shape in your surroundings.",
+            detail: "Find a colour in a nearby building, plant, or path.",
+          }
+        : environment.includes("park")
+          ? {
+              name: "Park",
+              opening: "Pause where you are in the park.",
+              focus: "Notice the shape of a tree or plant nearby.",
+              detail: "Find a patch of colour in the open space around you.",
+            }
+          : {
+              name: "Outdoor",
+              opening: "Pause in a comfortable place outside.",
+              focus: "Notice one shape in your surroundings.",
+              detail: "Find one nearby detail with a colour you enjoy.",
+            };
+
   if (personalization?.difficultyAdjustment === "simpler") {
-    if (mode === "audio-first") {
-      return [
-        "Pause in a comfortable place.",
-        "Notice one nearby detail at your own pace.",
-        "Finish whenever you feel ready.",
-      ];
-    }
     return [
-      "Pause comfortably.",
-      "Notice one nearby detail.",
+      mode === "simple-steps" ? "Pause comfortably." : place.opening,
+      mode === "simple-steps" ? place.focus.replace(/^Notice a /, "Look at a ") : place.focus,
       "Finish whenever you feel ready.",
     ];
   }
 
-  const environmentLabel: Record<string, string> = {
-    NATURAL_SPACE: "natural space",
-    URBAN_SPACE: "urban space",
-    CAMPUS: "campus",
-    NEIGHBOURHOOD: "neighborhood",
-    UNKNOWN: "your surroundings",
-  };
-  const place = environmentLabel[environment] ?? "your surroundings";
-  const placePhrase = place === "your surroundings" ? place : `the ${place}`;
   const quietObservation = personalization?.sensoryAdjustment === "quieter";
-  if (mode === "audio-first") {
-    return [
-      `Pause in a comfortable place in ${placePhrase}.`,
-      quietObservation ? "Notice one nearby detail at your own pace." : "Listen for one sound nearby.",
-      "Notice one shape around you.",
-      "Notice one colour you enjoy.",
-      "Finish whenever you feel ready.",
-    ];
-  }
-  if (mode === "simple-steps") {
-    return [
-      "Pause in a comfortable place.",
-      "Look at one nearby detail.",
-      "Notice its shape.",
-      "Notice its colour.",
-      "Finish whenever you feel ready.",
-    ];
-  }
+  const observation = mode === "simple-steps"
+    ? place.focus.replace(/^Notice a /, "Look at a ")
+    : place.focus;
+  const soundStep = mode === "audio-first"
+    ? quietObservation ? "Notice one nearby detail at your own pace." : "Listen for one sound nearby."
+    : mode === "quiet"
+      ? quietObservation ? "Notice one gentle detail nearby." : "Listen for a quiet sound."
+      : place.detail;
   return [
-    `Pause in a comfortable place in ${placePhrase}.`,
-    "Notice one plant or natural detail nearby.",
-    "Find one gentle colour in your surroundings.",
-    quietObservation ? "Notice one gentle detail nearby." : "Listen for a quiet sound.",
+    place.opening,
+    observation,
+    place.detail,
+    soundStep,
     "Finish whenever you feel ready.",
   ];
 }
@@ -106,14 +117,24 @@ export class MockLLMProvider implements LocalLLMProvider {
     scene: SceneContext,
     personalization?: PersonalizationContext,
   ): Promise<Mission> {
-    const steps = buildSteps(constraints.mode, constraints.environment, personalization);
+    const steps = buildSteps(constraints.mode, scene, personalization);
     const environmentName = scene.environment === "outdoor area"
       ? "your outdoor surroundings"
       : `the ${scene.environment}`;
+    const isCampus = /campus|university|college|school/i.test(scene.environment);
+    const title = isCampus
+      ? "Campus Details"
+      : /garden/i.test(scene.environment)
+        ? "Garden Noticing"
+        : /neighbou?rhood/i.test(scene.environment)
+          ? "Neighborhood Patterns"
+          : /park/i.test(scene.environment)
+            ? "Park Noticing"
+            : "Outdoor Noticing";
 
     return {
-      title: constraints.mode === "audio-first" ? "Listen and Notice" : "Outdoor Noticing",
-      summary: `A gentle ${constraints.durationMinutes}-minute activity for noticing simple details in ${environmentName}.`,
+      title,
+      summary: `A gentle ${constraints.durationMinutes}-minute activity for noticing details in ${environmentName}.`,
       durationMinutes: constraints.durationMinutes,
       steps,
       audioVersion: steps.map((step) => step),
@@ -134,9 +155,19 @@ export interface MissionPipelineResult {
   mission: Mission;
   usedFallback: boolean;
   usedManualEnvironmentRecovery?: boolean;
+  fallbackReason?: MissionFallbackReason;
   scene?: SceneContext;
   sceneSource?: "vision" | "manual";
 }
+
+export type MissionFallbackReason =
+  | "provider-unavailable"
+  | "generation-failed"
+  | "scene-invalid"
+  | "constraints-invalid"
+  | "mission-invalid"
+  | "duration-mismatch"
+  | "mission-unsafe";
 
 export type MissionGenerationStage = "understanding" | "adapting" | "preparing";
 
@@ -153,7 +184,29 @@ export async function generateMissionPipelineWithFallback(
     imageSelected: preferences.photo !== undefined,
   });
   let usedManualEnvironmentRecovery = false;
-  let sceneSource: "vision" | "manual" = "manual";
+  let sceneSource: "vision" | "manual" | undefined;
+  let validatedScene: SceneContext | undefined;
+  let generationAttempted = false;
+  const fallbackResult = (reason: MissionFallbackReason): MissionPipelineResult => {
+    const fallbackScene = validatedScene ??
+      (hasManualEnvironment(preferences.environment)
+        ? getManualSceneContext(preferences.environment)
+        : undefined);
+    return {
+      mission: getValidatedFallbackMission(
+        preferences.mode,
+        preferences.environment,
+        preferences.durationMinutes,
+        fallbackScene,
+      ),
+      usedFallback: true,
+      usedManualEnvironmentRecovery: usedManualEnvironmentRecovery ||
+        (preferences.photo !== undefined && fallbackScene !== undefined && sceneSource !== "vision"),
+      fallbackReason: reason,
+      scene: fallbackScene,
+      sceneSource: validatedScene ? sceneSource : fallbackScene ? "manual" : undefined,
+    };
+  };
   const reportStage = (stage: MissionGenerationStage) => {
     try {
       onStage?.(stage);
@@ -173,39 +226,34 @@ export async function generateMissionPipelineWithFallback(
       sceneSource = preferences.photo ? analysis.source : "manual";
       console.info("[OpenAir Quest][AI] Vision stage completed.");
     } catch (error: unknown) {
-      if (!preferences.photo || !hasManualEnvironment(preferences.environment)) {
+      if (!hasManualEnvironment(preferences.environment)) {
         throw error;
       }
       console.warn("[OpenAir Quest][AI] Vision failed; continuing with manual environment context.");
-      usedManualEnvironmentRecovery = true;
+      usedManualEnvironmentRecovery = preferences.photo !== undefined;
       scene = getManualSceneContext(preferences.environment);
       sceneSource = "manual";
     }
 
-    let validatedScene = SceneSchema.safeParse(scene);
-    if (!validatedScene.success) {
+    let parsedScene = SceneSchema.safeParse(scene);
+    if (!parsedScene.success) {
       if (preferences.photo && hasManualEnvironment(preferences.environment)) {
         console.warn("[OpenAir Quest][AI] Vision returned invalid scene data; continuing with manual environment context.");
-        usedManualEnvironmentRecovery = true;
+        usedManualEnvironmentRecovery = preferences.photo !== undefined;
         scene = getManualSceneContext(preferences.environment);
         sceneSource = "manual";
-        validatedScene = SceneSchema.safeParse(scene);
+        parsedScene = SceneSchema.safeParse(scene);
       }
-      if (!validatedScene.success) {
+      if (!parsedScene.success) {
         console.warn("[OpenAir Quest][AI] Invalid scene schema; using built-in fallback.");
-        return {
-          mission: getValidatedFallbackMission(
-            preferences.mode,
-            preferences.environment,
-            preferences.durationMinutes,
-          ),
-          usedFallback: true,
-        };
+        return fallbackResult("scene-invalid");
       }
     }
+    const sceneContext = parsedScene.data;
+    validatedScene = sceneContext;
 
     reportStage("adapting");
-    const environment = normaliseEnvironment(validatedScene.data.environment);
+    const environment = normaliseEnvironment(sceneContext.environment);
     const constraints = buildConstraints(
       preferences.mode,
       preferences.durationMinutes,
@@ -214,64 +262,37 @@ export async function generateMissionPipelineWithFallback(
     const validatedConstraints = ConstraintSchema.safeParse(constraints);
     if (!validatedConstraints.success) {
       console.warn("[OpenAir Quest][AI] Invalid accessibility constraints; using built-in fallback.");
-      return {
-        mission: getValidatedFallbackMission(
-          preferences.mode,
-          preferences.environment,
-          preferences.durationMinutes,
-        ),
-        usedFallback: true,
-      };
+      return fallbackResult("constraints-invalid");
     }
 
     reportStage("preparing");
     console.info("[OpenAir Quest][AI] LLM stage started.");
+    generationAttempted = true;
     const generated = await llm.generateMission(
       validatedConstraints.data,
-      validatedScene.data,
+      sceneContext,
       personalization,
     );
     console.info("[OpenAir Quest][AI] LLM stage completed.");
     const validatedMission = MissionSchema.safeParse(generated);
     if (!validatedMission.success) {
       console.warn("[OpenAir Quest][AI] Invalid mission schema; using built-in fallback.");
-      return {
-        mission: getValidatedFallbackMission(
-          preferences.mode,
-          preferences.environment,
-          preferences.durationMinutes,
-        ),
-        usedFallback: true,
-      };
+      return fallbackResult("mission-invalid");
     }
     if (validatedMission.data.durationMinutes !== validatedConstraints.data.durationMinutes) {
       console.warn("[OpenAir Quest][AI] Mission duration mismatch; using built-in fallback.");
-      return {
-        mission: getValidatedFallbackMission(
-          preferences.mode,
-          preferences.environment,
-          preferences.durationMinutes,
-        ),
-        usedFallback: true,
-      };
+      return fallbackResult("duration-mismatch");
     }
     if (!validateSafety(validatedMission.data).safe) {
       console.warn("[OpenAir Quest][AI] Mission safety validation failed; using built-in fallback.");
-      return {
-        mission: getValidatedFallbackMission(
-          preferences.mode,
-          preferences.environment,
-          preferences.durationMinutes,
-        ),
-        usedFallback: true,
-      };
+      return fallbackResult("mission-unsafe");
     }
 
     return {
       mission: validatedMission.data,
       usedFallback: false,
       usedManualEnvironmentRecovery,
-      scene: validatedScene.data,
+      scene: sceneContext,
       sceneSource,
     };
   } catch (error: unknown) {
@@ -279,14 +300,7 @@ export async function generateMissionPipelineWithFallback(
       error,
       message: error instanceof Error ? error.message : undefined,
     });
-    return {
-      mission: getValidatedFallbackMission(
-        preferences.mode,
-        preferences.environment,
-        preferences.durationMinutes,
-      ),
-      usedFallback: true,
-    };
+    return fallbackResult(generationAttempted ? "generation-failed" : "provider-unavailable");
   }
 }
 

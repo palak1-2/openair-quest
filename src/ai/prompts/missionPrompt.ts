@@ -22,6 +22,11 @@ Generate exactly one activity using:
 - environmental context
 - deterministic constraints
 
+Ground the mission in the supplied scene's specific environment and broad features.
+When context describes a campus, garden, park, or neighborhood, make the title or
+at least two steps clearly relevant to that setting. Use only details present in
+the scene; do not invent objects or claim that a place is safe or accessible.
+
 Quiet mode:
 - use calm language
 - keep sensory stimulation low

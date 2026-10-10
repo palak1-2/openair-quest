@@ -1,5 +1,6 @@
 import type { JSX } from "react";
 import type { ActivityRuntime } from "@/ai/providerFactory";
+import type { MissionFallbackReason } from "@/ai/MockAIProvider";
 import type { AccessibilityMode, DurationMinutes, EnvironmentOption, Mission, SceneContext } from "@/types";
 import { Icon } from "@/Icon";
 
@@ -12,6 +13,7 @@ interface SessionSnapshot {
   historyItemId?: string | null;
   usedLocalFallback?: boolean;
   usedManualEnvironmentRecovery?: boolean;
+  fallbackReason?: MissionFallbackReason;
   runtimeProvider?: ActivityRuntime | null;
   scene?: SceneContext | null;
   sceneSource?: "vision" | "manual" | null;
@@ -45,12 +47,24 @@ function formatEnvironment(environment: EnvironmentOption): string {
   return environment.replace("-", " ");
 }
 
-function runtimeLabel(runtime: ActivityRuntime, usedLocalFallback?: boolean): string {
+function runtimeLabel(
+  runtime: ActivityRuntime,
+  _usedLocalFallback?: boolean,
+  _fallbackReason?: MissionFallbackReason,
+): string {
   if (runtime === "local-ai") return "Local AI · Generated on this device";
   if (runtime === "mock") return "Demo mode · Deterministic activity";
-  return usedLocalFallback
-    ? "Built-in activity · Local AI unavailable"
-    : "Ready-to-use built-in activity";
+  return "Built-in activity · Generated output not used";
+}
+
+function fallbackMessage(
+  _reason: MissionFallbackReason,
+  sceneSource: "vision" | "manual" | null | undefined,
+): string {
+  const context = sceneSource === "vision"
+    ? "It uses the validated context from your photo and your comfort profile."
+    : "It uses the environment you selected and your comfort profile.";
+  return `Generated output was unavailable or did not pass validation, so this built-in quest is shown. ${context}`;
 }
 
 export function Activity({ session, onStart, onRestart, onBack }: ActivityProps): JSX.Element {
@@ -84,13 +98,23 @@ export function Activity({ session, onStart, onRestart, onBack }: ActivityProps)
         {session.runtimeProvider && (
           <p className="quest-runtime" role="note">
             <Icon name={session.runtimeProvider === "local-ai" ? "shield-check" : "info"} size={17} />
-            {runtimeLabel(session.runtimeProvider, session.usedLocalFallback)}
+            {runtimeLabel(
+              session.runtimeProvider,
+              session.usedLocalFallback,
+              session.fallbackReason,
+            )}
           </p>
         )}
 
-        {session.usedManualEnvironmentRecovery && (
+        {session.fallbackReason && (
           <p className="quest-recovery" role="status">
-            The photo could not be used, so this quest follows the environment you selected.
+            {fallbackMessage(session.fallbackReason, session.sceneSource)}
+          </p>
+        )}
+
+        {session.photo && session.sceneSource !== "vision" && (
+          <p className="quest-recovery" role="status">
+            The photo was not analyzed, so this quest follows the environment you selected.
           </p>
         )}
 

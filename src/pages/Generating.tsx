@@ -3,7 +3,7 @@ import type { JSX } from "react";
 import type { AccessibilityMode, DurationMinutes, EnvironmentOption, Mission, SceneContext } from "@/types";
 import { generateSelectedMission } from "@/ai/providerFactory";
 import type { ActivityRuntime, AIMode } from "@/ai/providerFactory";
-import type { MissionGenerationStage } from "@/ai/MockAIProvider";
+import type { MissionFallbackReason, MissionGenerationStage } from "@/ai/MockAIProvider";
 import { Icon } from "@/Icon";
 
 interface SessionSnapshot {
@@ -25,6 +25,7 @@ interface GeneratingProps {
     runtimeProvider: ActivityRuntime,
     scene?: SceneContext,
     sceneSource?: "vision" | "manual",
+    fallbackReason?: MissionFallbackReason,
   ) => void;
   onError: () => void;
   onStage: (stage: MissionGenerationStage) => void;
@@ -105,6 +106,7 @@ export function Generating({
           result.runtimeProvider,
           result.scene,
           result.sceneSource,
+          result.fallbackReason,
         );
       }
     }).catch((error: unknown) => {

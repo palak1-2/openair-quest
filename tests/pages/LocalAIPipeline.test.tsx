@@ -27,12 +27,12 @@ async function selectPreferences(user: ReturnType<typeof userEvent.setup>) {
 
 async function expectUsableValidatedFallback(
   durationMinutes: DurationMinutes = 10,
-  title = "Simple Outdoor Noticing",
+  title = "Garden Noticing",
 ) {
   expect(await screen.findByRole("heading", { name: title })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /begin quest/i })).toBeEnabled();
   expect(screen.queryByText("From your photo")).not.toBeInTheDocument();
-  expect(screen.getByRole("note")).toHaveTextContent("Built-in activity · Local AI unavailable");
+  expect(screen.getByRole("note")).toHaveTextContent("Built-in activity");
   expect(screen.queryByText(/generated on this device/i)).not.toBeInTheDocument();
   const mission = getValidatedFallbackMission("simple-steps", "garden", durationMinutes);
   expect(MissionSchema.safeParse(mission).success).toBe(true);
@@ -134,8 +134,8 @@ describe("local AI application flow", () => {
     expect(screen.getByRole("note")).toHaveTextContent(
       "Local AI · Generated on this device",
     );
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "The photo could not be used, so this quest follows the environment you selected.",
+    expect(screen.getAllByRole("status").map((status) => status.textContent).join(" ")).toContain(
+      "The photo was not analyzed, so this quest follows the environment you selected.",
     );
     expect(requests.map((request) => request.model)).toEqual(["qwen2.5vl:3b", "gemma3:4b"]);
     expect(JSON.parse(requests[1].prompt).scene).toMatchObject({ environment: "garden" });
@@ -161,8 +161,8 @@ describe("local AI application flow", () => {
 
     expect(await screen.findByRole("heading", { name: localMission.title })).toBeInTheDocument();
     expect(screen.queryByText("From your photo")).not.toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "The photo could not be used, so this quest follows the environment you selected.",
+    expect(screen.getAllByRole("status").map((status) => status.textContent).join(" ")).toContain(
+      "The photo was not analyzed, so this quest follows the environment you selected.",
     );
   });
 
@@ -214,6 +214,9 @@ describe("local AI application flow", () => {
 
     await expectUsableValidatedFallback();
     expect(screen.queryByText(/cross the road/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Generated output was unavailable or did not pass validation, so this built-in quest is shown.",
+    );
   });
 
   it("renders a validated fallback after a local Ollama request timeout", async () => {

@@ -62,6 +62,34 @@ describe("Mock AI providers", () => {
     expect(mission.steps.join(" ")).not.toMatch(/navigate|cross a road|medical|therapeutic/i);
   });
 
+  it("grounds missions in the selected environment across accessibility modes", async () => {
+    const provider = new MockLLMProvider();
+    for (const mode of modes) {
+      const makeMission = async (environment: EnvironmentOption) => {
+        const { scene } = await new MockVisionProvider().analyze(undefined, environment);
+        return provider.generateMission(
+          {
+            mode,
+            durationMinutes: 10,
+            environment: environment === "campus" ? "CAMPUS" : "NATURAL_SPACE",
+            avoid: [],
+            instructionStyle: mode === "simple-steps" ? "one-step" : "calm",
+          },
+          scene,
+        );
+      };
+      const campus = await makeMission("campus");
+      const park = await makeMission("park");
+      const outdoors = await makeMission("not-sure");
+      expect(campus.title).toMatch(/campus/i);
+      expect(campus.steps.join(" ")).toMatch(/campus|building/i);
+      expect(park.title).toMatch(/park/i);
+      expect(park.steps.join(" ")).toMatch(/park|tree|plant/i);
+      expect(outdoors.title).toMatch(/outdoor/i);
+      expect(campus.steps).not.toEqual(park.steps);
+    }
+  });
+
   it.each([5, 10, 20] as const)("matches requested duration of %s minutes", async (duration) => {
     const mission = await generateMissionPipeline(preferences("garden", "quiet", duration));
     expect(mission.durationMinutes).toBe(duration);
@@ -81,6 +109,30 @@ describe("mission pipeline validation", () => {
     expect(stages).toEqual(["understanding", "adapting", "preparing"]);
   });
 
+  it("passes the selected environment into normalized constraints and scene context", async () => {
+    const received: { environment: string; scene: string }[] = [];
+    const llm: LocalLLMProvider = {
+      generateMission: async (constraints, scene) => {
+        received.push({ environment: constraints.environment, scene: scene.environment });
+        return new MockLLMProvider().generateMission(constraints, scene);
+      },
+    };
+
+    for (const environment of ["campus", "park"] as const) {
+      const result = await generateMissionPipelineWithFallback(
+        preferences(environment),
+        undefined,
+        llm,
+      );
+      expect(result.usedFallback).toBe(false);
+    }
+
+    expect(received).toEqual([
+      { environment: "CAMPUS", scene: "campus" },
+      { environment: "NATURAL_SPACE", scene: "park" },
+    ]);
+  });
+
   it("does not allow a progress listener failure to interrupt mission generation", async () => {
     const mission = await generateMissionPipelineWithFallback(
       preferences("garden", "quiet", 10),
@@ -97,7 +149,7 @@ describe("mission pipeline validation", () => {
 
   it("returns generated valid output", async () => {
     const mission = await generateMissionPipeline(preferences("campus", "simple-steps", 20));
-    expect(mission.title).toBe("Outdoor Noticing");
+    expect(mission.title).toBe("Campus Details");
     expect(mission.durationMinutes).toBe(20);
     expect(mission.steps).toHaveLength(mission.audioVersion.length);
   });
@@ -107,7 +159,7 @@ describe("mission pipeline validation", () => {
       generateMission: async () => ({ title: "", steps: [] }) as unknown as Mission,
     };
     const mission = await generateMissionPipeline(preferences("park", "audio-first", 20), undefined, invalidLLM);
-    expect(mission.title).toBe("Listen and Look");
+    expect(mission.title).toBe("Park Noticing");
     expect(mission.durationMinutes).toBe(20);
   });
 
@@ -124,7 +176,7 @@ describe("mission pipeline validation", () => {
       }),
     };
     const mission = await generateMissionPipeline(preferences(), undefined, unsafeLLM);
-    expect(mission.title).toBe("Quiet Nature Observation");
+    expect(mission.title).toBe("Park Noticing");
     expect(mission.steps.join(" ")).not.toMatch(/cross a road/i);
   });
 
@@ -133,7 +185,7 @@ describe("mission pipeline validation", () => {
       analyze: async () => ({ scene: { environment: "", features: [] }, source: "vision" }),
     };
     const mission = await generateMissionPipeline(preferences(), invalidVision);
-    expect(mission.title).toBe("Quiet Nature Observation");
+    expect(mission.title).toBe("Park Noticing");
   });
 
   it("preserves current deterministic output when personalization is absent or neutral", async () => {
@@ -182,7 +234,7 @@ describe("mission pipeline validation", () => {
 
     expect(mission.steps).toEqual([
       "Pause comfortably.",
-      "Notice one nearby detail.",
+      "Look at a leaf, flower, or plant nearby.",
       "Finish whenever you feel ready.",
     ]);
     expect(mission.steps.join(" ")).not.toMatch(/navigate|road|listen for a sound/i);

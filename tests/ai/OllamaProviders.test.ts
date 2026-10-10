@@ -288,8 +288,8 @@ describe("OllamaLLMProvider", () => {
     );
     expect(client.generate).toHaveBeenCalledTimes(2);
     expect(result.usedFallback).toBe(true);
-    expect(result.scene).toBeUndefined();
-    expect(result.sceneSource).toBeUndefined();
+    expect(result.scene).toMatchObject({ environment: "garden", features: ["trees"] });
+    expect(result.sceneSource).toBe("manual");
     expect(MissionSchema.safeParse(result.mission).success).toBe(true);
     expect(validateSafety(result.mission).safe).toBe(true);
     expect(result.mission.durationMinutes).toBe(10);
@@ -376,10 +376,14 @@ describe("local provider pipeline", () => {
   it("uses a built-in fallback when a local provider fails", async () => {
     const result = await generateMissionPipelineWithFallback(
       { mode: "audio-first", durationMinutes: 20, environment: "park" },
-      { analyze: async () => { throw new Error("Ollama offline"); } },
+      { analyze: async () => ({ scene: { environment: "park", features: ["trees"] }, source: "manual" }) },
+      { generateMission: async () => { throw new Error("Ollama offline"); } },
     );
     expect(result.usedFallback).toBe(true);
-    expect(result.mission.title).toBe("Listen and Look");
+    expect(result.mission.title).toBe("Park Noticing");
+    expect(result.fallbackReason).toBe("generation-failed");
+    expect(result.sceneSource).toBe("manual");
+    expect(result.scene).toMatchObject({ environment: "park" });
     expect(result.mission.durationMinutes).toBe(20);
   });
 
@@ -442,7 +446,7 @@ describe("local provider pipeline", () => {
     expect(result.usedFallback).toBe(true);
     expect(result.scene).toBeUndefined();
     expect(result.sceneSource).toBeUndefined();
-    expect(result.mission.title).toBe("Quiet Nature Observation");
+    expect(result.mission.title).toBe("Outdoor Noticing");
     expect(result.mission.durationMinutes).toBe(10);
   });
 

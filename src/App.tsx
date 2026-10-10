@@ -27,7 +27,7 @@ import { History } from "./pages/History";
 import { addHistoryItem } from "./storage/historyStore";
 import { getConfiguredAIMode } from "./ai/providerFactory";
 import type { ActivityRuntime, AIMode } from "./ai/providerFactory";
-import type { MissionGenerationStage } from "./ai/MockAIProvider";
+import type { MissionFallbackReason, MissionGenerationStage } from "./ai/MockAIProvider";
 import { Icon } from "./Icon";
 
 import type {
@@ -49,6 +49,7 @@ interface SessionState {
   historyItemId: string | null;
   usedLocalFallback: boolean;
   usedManualEnvironmentRecovery: boolean;
+  fallbackReason?: MissionFallbackReason;
   runtimeProvider: ActivityRuntime | null;
   scene: SceneContext | null;
   sceneSource: "vision" | "manual" | null;
@@ -63,6 +64,7 @@ const INITIAL_SESSION: SessionState = {
   historyItemId: null,
   usedLocalFallback: false,
   usedManualEnvironmentRecovery: false,
+  fallbackReason: undefined,
   runtimeProvider: null,
   scene: null,
   sceneSource: null,
@@ -208,6 +210,7 @@ export default function App({ aiMode = getConfiguredAIMode() }: { aiMode?: AIMod
     runtimeProvider: ActivityRuntime,
     scene?: SceneContext,
     sceneSource?: "vision" | "manual",
+    fallbackReason?: MissionFallbackReason,
   ) => {
     console.info("[OpenAir Quest][FLOW] Generation completed; opening Activity.", {
       usedLocalFallback,
@@ -217,6 +220,7 @@ export default function App({ aiMode = getConfiguredAIMode() }: { aiMode?: AIMod
       mission,
       usedLocalFallback,
       usedManualEnvironmentRecovery,
+      fallbackReason,
       runtimeProvider,
       scene: scene ?? null,
       sceneSource: sceneSource ?? null,
