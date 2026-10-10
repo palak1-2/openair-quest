@@ -24,19 +24,19 @@ describe("Generating", () => {
         }}
         onComplete={vi.fn()}
         onError={vi.fn()}
+        onStage={vi.fn()}
         aiMode="local"
       />,
     );
 
-    expect(screen.getByText("Preparing your activity…")).toBeInTheDocument();
-    expect(screen.getByRole("note")).toHaveTextContent(
-      "Local AI is preparing your activity on this device.",
-    );
+    expect(screen.getByRole("heading", { name: "Understanding your surroundings" })).toBeInTheDocument();
+    expect(screen.getByText("Starting with the environment you chose")).toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent("prepared locally on this device");
     act(() => {
       vi.advanceTimersByTime(15_000);
     });
-    expect(screen.getByText(
+    expect(screen.getByRole("status")).toHaveTextContent(
       "This is taking a little longer than usual. Please keep this page open.",
-    )).toBeInTheDocument();
+    );
   });
 });

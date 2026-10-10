@@ -138,11 +138,14 @@ export interface MissionPipelineResult {
   sceneSource?: "vision" | "manual";
 }
 
+export type MissionGenerationStage = "understanding" | "adapting" | "preparing";
+
 export async function generateMissionPipelineWithFallback(
   preferences: UserPreferences,
   vision: LocalVisionProvider = mockVisionProvider,
   llm: LocalLLMProvider = mockLLMProvider,
   personalization?: PersonalizationContext,
+  onStage?: (stage: MissionGenerationStage) => void,
 ): Promise<MissionPipelineResult> {
   console.info("[OpenAir Quest][AI] Pipeline started.", {
     visionProvider: vision.constructor.name,
@@ -151,7 +154,15 @@ export async function generateMissionPipelineWithFallback(
   });
   let usedManualEnvironmentRecovery = false;
   let sceneSource: "vision" | "manual" = "manual";
+  const reportStage = (stage: MissionGenerationStage) => {
+    try {
+      onStage?.(stage);
+    } catch (error: unknown) {
+      console.warn("[OpenAir Quest][AI] Progress listener failed.", error);
+    }
+  };
   try {
+    reportStage("understanding");
     console.info("[OpenAir Quest][AI] Vision stage started.", {
       imageSelected: preferences.photo !== undefined,
     });
@@ -193,6 +204,7 @@ export async function generateMissionPipelineWithFallback(
       }
     }
 
+    reportStage("adapting");
     const environment = normaliseEnvironment(validatedScene.data.environment);
     const constraints = buildConstraints(
       preferences.mode,
@@ -212,6 +224,7 @@ export async function generateMissionPipelineWithFallback(
       };
     }
 
+    reportStage("preparing");
     console.info("[OpenAir Quest][AI] LLM stage started.");
     const generated = await llm.generateMission(
       validatedConstraints.data,

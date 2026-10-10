@@ -99,11 +99,11 @@ describe("ActiveActivity speech controls", () => {
     const { onComplete, onStop } = renderActivity();
     await user.click(screen.getByRole("button", { name: /next/i }));
     await user.click(screen.getByRole("button", { name: /next/i }));
-    await user.click(screen.getByRole("button", { name: /complete activity/i }));
+    await user.click(screen.getByRole("button", { name: /complete quest/i }));
     expect(speech.stop).toHaveBeenCalled();
     expect(onComplete).toHaveBeenCalledOnce();
 
-    await user.click(screen.getByRole("button", { name: /stop activity/i }));
+    await user.click(screen.getByRole("button", { name: /stop quest/i }));
     expect(onStop).toHaveBeenCalledOnce();
   });
 });

@@ -18,10 +18,10 @@ const localMission: Mission = {
 };
 
 async function selectPreferences(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: /start openair quest/i }));
+  await user.click(screen.getByRole("button", { name: /initialize exploration/i }));
   await user.click(screen.getByRole("radio", { name: /simple steps/i }));
   await user.click(screen.getByRole("radio", { name: /10 min/i }));
-  await user.click(screen.getByRole("button", { name: /continue/i }));
+  await user.click(screen.getByRole("button", { name: /choose surroundings/i }));
   await user.click(screen.getByRole("radio", { name: /garden/i }));
 }
 
@@ -30,7 +30,7 @@ async function expectUsableValidatedFallback(
   title = "Simple Outdoor Noticing",
 ) {
   expect(await screen.findByRole("heading", { name: title })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /start activity/i })).toBeEnabled();
+  expect(screen.getByRole("button", { name: /begin quest/i })).toBeEnabled();
   expect(screen.queryByText("From your photo")).not.toBeInTheDocument();
   expect(screen.getByRole("note")).toHaveTextContent("Built-in activity · Local AI unavailable");
   expect(screen.queryByText(/generated on this device/i)).not.toBeInTheDocument();
@@ -38,7 +38,7 @@ async function expectUsableValidatedFallback(
   expect(MissionSchema.safeParse(mission).success).toBe(true);
   expect(validateSafety(mission).safe).toBe(true);
   expect(mission.durationMinutes).toBe(durationMinutes);
-  expect(screen.getByText(`${durationMinutes} min`)).toBeInTheDocument();
+  expect(screen.getByText(`${durationMinutes} minutes`)).toBeInTheDocument();
   for (const step of mission.steps) {
     expect(screen.getByText(step)).toBeInTheDocument();
   }
@@ -74,7 +74,7 @@ describe("local AI application flow", () => {
     await selectPreferences(user);
     const file = new File(["garden image"], "garden.png", { type: "image/png" });
     await user.upload(screen.getByLabelText(/tap to upload a photo/i), file);
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /prepare my quest/i }));
 
     expect(await screen.findByRole("heading", { name: localMission.title })).toBeInTheDocument();
     expect(screen.getByRole("note")).toHaveTextContent(
@@ -84,7 +84,7 @@ describe("local AI application flow", () => {
     expect(screen.getByText(localMission.summary)).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Context from your photo" }))
       .toHaveTextContent("From your photoUrban park · open grassy area · trees");
-    expect(screen.getByText("10 min")).toBeInTheDocument();
+    expect(screen.getByText("10 minutes")).toBeInTheDocument();
     expect(screen.getByText("Notice one colour.")).toBeInTheDocument();
     expect(requests.map((request) => request.model)).toEqual(["qwen2.5vl:3b", "gemma3:4b"]);
     expect(requests[0].images).toHaveLength(1);
@@ -104,7 +104,7 @@ describe("local AI application flow", () => {
     const user = userEvent.setup();
     render(<App aiMode="local" />);
     await selectPreferences(user);
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /prepare my quest/i }));
 
     await expectUsableValidatedFallback();
   });
@@ -127,7 +127,7 @@ describe("local AI application flow", () => {
       screen.getByLabelText(/tap to upload a photo/i),
       new File(["garden image"], "garden.png", { type: "image/png" }),
     );
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /prepare my quest/i }));
 
     expect(await screen.findByRole("heading", { name: localMission.title })).toBeInTheDocument();
     expect(screen.queryByText("From your photo")).not.toBeInTheDocument();
@@ -135,7 +135,7 @@ describe("local AI application flow", () => {
       "Local AI · Generated on this device",
     );
     expect(screen.getByRole("status")).toHaveTextContent(
-      "The photo could not be used, so this activity was created using your selected environment.",
+      "The photo could not be used, so this quest follows the environment you selected.",
     );
     expect(requests.map((request) => request.model)).toEqual(["qwen2.5vl:3b", "gemma3:4b"]);
     expect(JSON.parse(requests[1].prompt).scene).toMatchObject({ environment: "garden" });
@@ -157,12 +157,12 @@ describe("local AI application flow", () => {
       screen.getByLabelText(/tap to upload a photo/i),
       new File(["garden image"], "garden.png", { type: "image/png" }),
     );
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /prepare my quest/i }));
 
     expect(await screen.findByRole("heading", { name: localMission.title })).toBeInTheDocument();
     expect(screen.queryByText("From your photo")).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(
-      "The photo could not be used, so this activity was created using your selected environment.",
+      "The photo could not be used, so this quest follows the environment you selected.",
     );
   });
 
@@ -210,7 +210,7 @@ describe("local AI application flow", () => {
     const user = userEvent.setup();
     render(<App aiMode="local" />);
     await selectPreferences(user);
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /prepare my quest/i }));
 
     await expectUsableValidatedFallback();
     expect(screen.queryByText(/cross the road/i)).not.toBeInTheDocument();
@@ -234,7 +234,7 @@ describe("local AI application flow", () => {
     const user = userEvent.setup();
     render(<App aiMode="local" />);
     await selectPreferences(user);
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /prepare my quest/i }));
 
     await expectUsableValidatedFallback();
     expect(JSON.stringify(vi.mocked(fetch).mock.calls)).not.toContain("response");
@@ -251,7 +251,7 @@ describe("local AI application flow", () => {
     const user = userEvent.setup();
     render(<App aiMode="local" />);
     await selectPreferences(user);
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /prepare my quest/i }));
 
     expect(await screen.findByRole("heading", { name: localMission.title })).toBeInTheDocument();
     expect(screen.queryByText("From your photo")).not.toBeInTheDocument();

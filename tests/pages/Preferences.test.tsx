@@ -11,12 +11,14 @@ import { Preferences } from "@/pages/Preferences";
 describe("Preferences page", () => {
   it("renders the page heading", () => {
     render(<Preferences onComplete={vi.fn()} onBack={vi.fn()} />);
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Your Preferences");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "How would you like to experience the outdoors?",
+    );
   });
 
   it("Continue button is disabled before selections are made", () => {
     render(<Preferences onComplete={vi.fn()} onBack={vi.fn()} />);
-    const btn = screen.getByRole("button", { name: /continue/i });
+    const btn = screen.getByRole("button", { name: /choose surroundings/i });
     expect(btn).toBeDisabled();
   });
 
@@ -24,7 +26,7 @@ describe("Preferences page", () => {
     render(<Preferences onComplete={vi.fn()} onBack={vi.fn()} />);
     await userEvent.click(screen.getByLabelText(/quiet/i));
     await userEvent.click(screen.getByLabelText(/10 min/i));
-    expect(screen.getByRole("button", { name: /continue/i })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: /choose surroundings/i })).not.toBeDisabled();
   });
 
   it("calls onComplete with correct values when Continue is clicked", async () => {
@@ -32,7 +34,7 @@ describe("Preferences page", () => {
     render(<Preferences onComplete={onComplete} onBack={vi.fn()} />);
     await userEvent.click(screen.getByLabelText(/simple steps/i));
     await userEvent.click(screen.getByLabelText(/5 min/i));
-    await userEvent.click(screen.getByRole("button", { name: /continue/i }));
+    await userEvent.click(screen.getByRole("button", { name: /choose surroundings/i }));
     expect(onComplete).toHaveBeenCalledWith("simple-steps", 5);
   });
 

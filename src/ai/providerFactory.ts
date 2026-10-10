@@ -7,6 +7,7 @@ import {
   mockLLMProvider,
   mockVisionProvider,
 } from "@/ai/MockAIProvider";
+import type { MissionGenerationStage } from "@/ai/MockAIProvider";
 import { getValidatedFallbackMission } from "@/fallback/fallbackMissions";
 import { getHistory } from "@/storage/historyStore";
 import { derivePersonalizationContext } from "@/ai/personalization";
@@ -57,6 +58,7 @@ export function createAIProviders(mode: AIMode = getConfiguredAIMode()): AIProvi
 export async function generateSelectedMission(
   preferences: UserPreferences,
   mode: AIMode = getConfiguredAIMode(),
+  onStage?: (stage: MissionGenerationStage) => void,
 ): Promise<SelectedMissionResult> {
   console.info("[OpenAir Quest][AI] Mission generation requested.", {
     mode,
@@ -70,6 +72,7 @@ export async function generateSelectedMission(
       providers.vision,
       providers.llm,
       personalization,
+      onStage,
     );
     if (result.usedFallback) {
       console.warn("[OpenAir Quest][AI] Pipeline selected a built-in fallback.", { mode });

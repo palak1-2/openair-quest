@@ -11,23 +11,23 @@ import { History } from "@/pages/History";
 describe("History page", () => {
   it("renders the page heading", () => {
     render(<History onStartNew={vi.fn()} />);
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("History");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("A journal of being outside.");
   });
 
   it("shows the empty state message when there is no history", () => {
     render(<History onStartNew={vi.fn()} />);
-    expect(screen.getByText(/no activities yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/your completed outdoor experiences will appear here/i)).toBeInTheDocument();
   });
 
   it("renders a Start new activity button", () => {
     render(<History onStartNew={vi.fn()} />);
-    expect(screen.getByRole("button", { name: /start a new activity/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /start exploring/i })).toBeInTheDocument();
   });
 
   it("calls onStartNew when the button is clicked", async () => {
     const onStartNew = vi.fn();
     render(<History onStartNew={onStartNew} />);
-    await userEvent.click(screen.getByRole("button", { name: /start a new activity/i }));
+    await userEvent.click(screen.getByRole("button", { name: /start exploring/i }));
     expect(onStartNew).toHaveBeenCalledOnce();
   });
 });

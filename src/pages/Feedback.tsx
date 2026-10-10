@@ -1,21 +1,8 @@
-/**
- * src/pages/Feedback.tsx
- *
- * Screen 7 — Feedback
- *
- * After completing an activity, the user can submit simple feedback.
- * Feedback is stored locally (Phase 9). In Phase 1 the selection is
- * captured in state but not persisted.
- *
- * Available feedback values (per PRD §7):
- *   comfortable | too-difficult | too-noisy | enjoyable
- *
- * Feedback is optional — the user can skip and go straight to History.
- */
 import { useState } from "react";
 import type { JSX } from "react";
 import type { FeedbackType, AccessibilityMode, DurationMinutes, EnvironmentOption } from "@/types";
 import { addFeedback } from "@/storage/historyStore";
+import { Icon } from "@/Icon";
 
 interface SessionSnapshot {
   mode: AccessibilityMode | null;
@@ -31,11 +18,15 @@ interface FeedbackProps {
   historyItemId: string | null;
 }
 
-const FEEDBACK_OPTIONS: { value: FeedbackType; label: string; icon: string }[] = [
-  { value: "comfortable", label: "Comfortable", icon: "😌" },
-  { value: "too-difficult", label: "Too difficult", icon: "😰" },
-  { value: "too-noisy", label: "Too noisy", icon: "🔇" },
-  { value: "enjoyable", label: "Enjoyable", icon: "😊" },
+const FEEDBACK_OPTIONS: {
+  value: FeedbackType;
+  label: string;
+  icon: "smile" | "accessibility" | "speaker-off" | "heart";
+}[] = [
+  { value: "comfortable", label: "Comfortable", icon: "smile" },
+  { value: "too-difficult", label: "A little challenging", icon: "accessibility" },
+  { value: "too-noisy", label: "Too noisy", icon: "speaker-off" },
+  { value: "enjoyable", label: "Enjoyable", icon: "heart" },
 ];
 
 export function Feedback({ historyItemId, onDone, onStartNew }: FeedbackProps): JSX.Element {
@@ -43,35 +34,34 @@ export function Feedback({ historyItemId, onDone, onStartNew }: FeedbackProps): 
   const [submitted, setSubmitted] = useState(false);
 
   function toggleFeedback(value: FeedbackType) {
-    setSelected((prev) =>
-      prev.includes(value) ? prev.filter((f) => f !== value) : [...prev, value]
+    setSelected((previous) =>
+      previous.includes(value)
+        ? previous.filter((feedback) => feedback !== value)
+        : [...previous, value],
     );
   }
 
-  function handleSubmit() {
+  function handleDone() {
     if (historyItemId && selected.length > 0) addFeedback(historyItemId, selected);
     setSubmitted(true);
   }
 
   if (submitted) {
     return (
-      <main className="page" id="main-content" aria-label="Feedback submitted">
-        <div
-          className="container centered-content"
-        >
-          <p aria-hidden="true" className="empty-state__icon">🌿</p>
-          <h1 className="page__title feedback-thanks__title">
-            Thank you!
-          </h1>
-          <p className="page__subtitle feedback-thanks__subtitle">
-            Your feedback helps improve future activities.
+      <main className="page completion-page" id="main-content" aria-label="Quest complete">
+        <div className="completion-composition">
+          <div className="completion-mark" aria-hidden="true"><Icon name="check" size={26} /></div>
+          <p className="eyebrow">Quest complete</p>
+          <h1 className="completion-title">You made a little space to notice.</h1>
+          <p className="completion-copy">
+            This moment has been added to your outdoor journal on this device.
           </p>
-          <div className="page__actions">
+          <div className="page__actions page__actions--completion">
             <button id="btn-view-history" className="btn-primary" onClick={onDone}>
-              View history
+              View your journal <Icon name="arrow-right" size={19} />
             </button>
-            <button id="btn-start-new-from-feedback" className="btn-secondary" onClick={onStartNew}>
-              Start a new activity
+            <button id="btn-start-new-from-feedback" className="text-action" onClick={onStartNew}>
+              Begin another quest
             </button>
           </div>
         </div>
@@ -80,51 +70,40 @@ export function Feedback({ historyItemId, onDone, onStartNew }: FeedbackProps): 
   }
 
   return (
-    <main className="page" id="main-content" aria-label="Activity feedback">
-      <div className="container">
-        <header className="page__header">
-          <h1 className="page__title">How did it go?</h1>
-          <p className="page__subtitle">
-            Select all that apply. Feedback is optional.
+    <main className="page reflection-page" id="main-content" aria-label="Quest complete">
+      <div className="reflection-composition">
+        <header className="reflection-heading">
+          <p className="eyebrow">Quest complete</p>
+          <h1 className="reflection-title">How did that feel?</h1>
+          <p className="reflection-copy">
+            Take a moment to reflect. Choose any that fit, or leave it blank.
           </p>
         </header>
 
-        {/* Feedback options as toggle buttons */}
-        <div
-          role="group"
-          aria-label="Feedback options"
-          className="choice-grid choice-grid--feedback"
-        >
-          {FEEDBACK_OPTIONS.map(({ value, label, icon }) => {
-            const isSelected = selected.includes(value);
+        <div className="reflection-choices" role="group" aria-label="Optional feedback">
+          {FEEDBACK_OPTIONS.map(({ value, label, icon }, index) => {
+            const active = selected.includes(value);
             return (
               <button
                 key={value}
                 id={`feedback-${value}`}
-                className={`choice-card choice-card--feedback${isSelected ? " choice-card--selected" : ""}`}
+                className={`reflection-choice${active ? " is-selected" : ""}`}
                 onClick={() => toggleFeedback(value)}
-                aria-pressed={isSelected}
+                aria-pressed={active}
               >
-                <span aria-hidden="true" className="choice-card__icon">{icon}</span>
-                <span className="choice-card__label">
-                  {label}
-                </span>
+                <span className="reflection-choice__index" aria-hidden="true">0{index + 1}</span>
+                <span className="reflection-choice__icon"><Icon name={icon} size={20} /></span>
+                <span className="reflection-choice__label">{label}</span>
+                <span className="reflection-choice__check" aria-hidden="true"><Icon name="check" size={17} /></span>
               </button>
             );
           })}
         </div>
 
-        {/* Actions */}
-        <div className="page__actions">
-          <button
-            id="btn-submit-feedback"
-            className="btn-primary"
-            onClick={handleSubmit}
-          >
-            {selected.length > 0 ? "Submit feedback" : "Skip"}
-          </button>
-          <button id="btn-start-new-skip" className="btn-secondary" onClick={onStartNew}>
-            Start a new activity
+        <div className="page__actions page__actions--flow">
+          <span className="reflection-optional">Your answer stays on this device.</span>
+          <button id="btn-submit-feedback" className="btn-primary" onClick={handleDone}>
+            Done <Icon name="arrow-right" size={19} />
           </button>
         </div>
       </div>

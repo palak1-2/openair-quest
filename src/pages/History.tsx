@@ -1,26 +1,8 @@
-/**
- * src/pages/History.tsx
- *
- * Screen 8 — History
- *
- * Displays previously completed activities stored locally.
- * In Phase 1, history is empty (localStorage wired in Phase 9).
- * Renders a clear empty state with a call to action.
- *
- * History items (when available) display:
- *   - Activity title
- *   - Environment
- *   - Accessibility mode
- *   - Duration
- *   - Feedback
- *   - Completion timestamp
- *
- * No account required. All data is local.
- */
 import { useState } from "react";
 import type { JSX } from "react";
 import type { HistoryItem } from "@/types";
 import { clearHistory, getHistory } from "@/storage/historyStore";
+import { Icon } from "@/Icon";
 
 interface HistoryProps {
   onStartNew: () => void;
@@ -28,9 +10,10 @@ interface HistoryProps {
 
 function formatTimestamp(iso: string): string {
   try {
-    return new Date(iso).toLocaleString(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
+    return new Date(iso).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   } catch {
     return iso;
@@ -38,15 +21,10 @@ function formatTimestamp(iso: string): string {
 }
 
 function formatFeedback(feedback: HistoryItem["feedback"]): string {
-  if (!feedback || feedback.length === 0) return "No feedback";
+  if (!feedback?.length) return "";
   return feedback
-    .map((f) =>
-      f
-        .split("-")
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(" ")
-    )
-    .join(", ");
+    .map((value) => value.split("-").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" "))
+    .join(" · ");
 }
 
 function formatMode(mode: HistoryItem["mode"]): string {
@@ -58,92 +36,65 @@ function formatMode(mode: HistoryItem["mode"]): string {
 export function History({ onStartNew }: HistoryProps): JSX.Element {
   const [items, setItems] = useState<HistoryItem[]>(getHistory);
 
-  function handleClearHistory() {
+  function handleClear() {
     clearHistory();
     setItems([]);
   }
 
   return (
-    <main className="page" id="main-content" aria-label="Activity history">
-      <div className="container">
-        <header className="page__header">
-          <h1 className="page__title">History</h1>
-          <p className="page__subtitle">Your completed activities — stored locally on this device.</p>
+    <main className="page journal-page" id="main-content" aria-label="Quest journal">
+      <div className="page-frame journal-frame">
+        <header className="page__header page__header--left journal-heading">
+          <p className="eyebrow">Your quests</p>
+          <h1 className="page__title">A journal of being outside.</h1>
+          <p className="page__subtitle">
+            Completed experiences, kept quietly on this device.
+          </p>
         </header>
 
         {items.length === 0 ? (
-          /* Empty state */
-          <div className="empty-state">
-            <p aria-hidden="true" className="empty-state__icon">🌿</p>
-            <p className="empty-state__title">
-              No activities yet.
-            </p>
-            <p className="empty-state__description">
-              Complete your first activity and it will appear here.
-            </p>
-          </div>
+          <section className="journal-empty" aria-label="No completed quests">
+            <span className="journal-empty__line" aria-hidden="true" />
+            <p className="journal-empty__title">Your completed outdoor experiences will appear here.</p>
+            <p className="journal-empty__copy">A place to return to the small things you noticed.</p>
+          </section>
         ) : (
-          /* History list */
-          <ul
-            aria-label="Completed activities"
-            className="history-list"
-          >
-            {items.map((item) => (
-              <li key={item.id} className="history-item">
-                <div className="history-item__header">
-                  <h2 className="history-item__title">
-                    {item.mission.title}
-                  </h2>
-                  <time
-                    dateTime={item.completedAt}
-                    className="history-item__time"
-                  >
-                    {formatTimestamp(item.completedAt)}
-                  </time>
-                </div>
-
-                <dl
-                  className="history-item__metadata"
-                >
-                  <div>
-                    <dt className="sr-only">Environment</dt>
-                    <dd style={{ textTransform: "capitalize" }}>{item.environment}</dd>
-                  </div>
-                  <div>
-                    <dt className="sr-only">Accessibility mode</dt>
-                    <dd>{formatMode(item.mode)}</dd>
-                  </div>
-                  <div>
-                    <dt className="sr-only">Duration</dt>
-                    <dd>{item.mission.durationMinutes} min</dd>
-                  </div>
-                  <div>
-                    <dt className="sr-only">Feedback</dt>
-                    <dd>{formatFeedback(item.feedback)}</dd>
-                  </div>
-                </dl>
-              </li>
-            ))}
-          </ul>
+          <ol aria-label="Completed quests" className="journal-list">
+            {items.map((item, index) => {
+              const feedback = formatFeedback(item.feedback);
+              return (
+                <li key={item.id} className="journal-entry">
+                  <span className="journal-entry__index" aria-hidden="true">
+                    {String(items.length - index).padStart(2, "0")}
+                  </span>
+                  <article className="journal-entry__content">
+                    <div className="journal-entry__topline">
+                      <h2 className="journal-entry__title">{item.mission.title}</h2>
+                      <time dateTime={item.completedAt}>{formatTimestamp(item.completedAt)}</time>
+                    </div>
+                    <p className="journal-entry__place">
+                      <span>{item.environment.replace("-", " ")}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{item.mission.durationMinutes} minutes</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{formatMode(item.mode)}</span>
+                    </p>
+                    {feedback && <p className="journal-entry__reflection">{feedback}</p>}
+                  </article>
+                </li>
+              );
+            })}
+          </ol>
         )}
 
-        {/* Actions */}
-        <div className="page__actions">
+        <div className="journal-actions">
           {items.length > 0 && (
-            <button
-              id="btn-clear-history"
-              className="btn-secondary btn-danger"
-              onClick={handleClearHistory}
-            >
-              Clear history
+            <button id="btn-clear-history" className="text-action text-action--secondary" onClick={handleClear}>
+              Clear journal
             </button>
           )}
-          <button
-            id="btn-start-new-from-history"
-            className="btn-primary"
-            onClick={onStartNew}
-          >
-            Start a new activity
+          <button id="btn-start-new-from-history" className="btn-primary" onClick={onStartNew}>
+            Start exploring <Icon name="arrow-right" size={19} />
           </button>
         </div>
       </div>

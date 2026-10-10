@@ -1,24 +1,8 @@
-/**
- * src/pages/ActiveActivity.tsx
- *
- * Screen 6 — Active Activity (step-by-step execution)
- *
- * Displays one step at a time during the activity.
- * No automatic countdown (per PRD §6 / IMPLEMENTATION_PLAN §9).
- *
- * Audio-first mode: TTS controls are shown (wired in Phase 8).
- * Phase 1: TTS buttons are present but speech is not yet implemented.
- *
- * Accessibility:
- *   - Keyboard-navigable Previous / Next controls
- *   - Step announced via aria-live="polite"
- *   - Progress indicator with aria-label
- *   - Text is ALWAYS the source of truth (TTS is additive)
- */
 import { useEffect, useRef, useState } from "react";
 import type { JSX } from "react";
 import type { AccessibilityMode, DurationMinutes, EnvironmentOption, Mission } from "@/types";
 import * as speech from "@/audio/speech";
+import { Icon } from "@/Icon";
 
 interface SessionSnapshot {
   mode: AccessibilityMode | null;
@@ -43,6 +27,7 @@ export function ActiveActivity({ session, onComplete, onStop }: ActiveActivityPr
   const speechSequence = useRef(0);
   const steps = session.mission?.steps ?? [];
   const audioVersion = session.mission?.audioVersion ?? [];
+
   useEffect(() => () => {
     speechSequence.current += 1;
     speech.stop();
@@ -50,18 +35,18 @@ export function ActiveActivity({ session, onComplete, onStop }: ActiveActivityPr
 
   if (steps.length === 0) {
     return (
-      <main className="page" id="main-content" aria-label="Active activity">
-        <div className="container">
-          <p role="alert">No validated activity is available to start.</p>
-          <button className="btn-secondary" onClick={onStop}>Stop activity</button>
+      <main className="page" id="main-content" aria-label="Active quest">
+        <div className="page-frame">
+          <p className="form-error" role="alert">No validated quest is available to begin.</p>
+          <button className="text-action" onClick={onStop}>Leave quest</button>
         </div>
       </main>
     );
   }
+
   const total = steps.length;
   const isLast = currentIndex === total - 1;
   const isFirst = currentIndex === 0;
-  const isAudioFirst = session.mode === "audio-first";
   const speechSupported = speech.isSupported();
 
   function stopSpeech() {
@@ -92,98 +77,87 @@ export function ActiveActivity({ session, onComplete, onStop }: ActiveActivityPr
   function goNext() {
     if (!isLast) {
       stopSpeech();
-      setCurrentIndex((i) => i + 1);
+      setCurrentIndex((index) => index + 1);
     }
   }
 
-  function goPrev() {
+  function goPrevious() {
     if (!isFirst) {
       stopSpeech();
-      setCurrentIndex((i) => i - 1);
+      setCurrentIndex((index) => index - 1);
     }
   }
 
   return (
-    <main className="page" id="main-content" aria-label="Active activity">
-      <div className="container">
-        {/* Header */}
-        <header className="page__header active-activity__header">
-          <h1 className="page__title active-activity__title">
-            {session.mission?.title}
-          </h1>
+    <main className="page in-quest-page" id="main-content" aria-label="Active quest">
+      <div className="in-quest-frame">
+        <header className="in-quest-header">
+          <p className="eyebrow">OpenAir Quest</p>
+          <p className="in-quest-count" aria-label={`Step ${currentIndex + 1} of ${total}`}>
+            <span>{String(currentIndex + 1).padStart(2, "0")}</span>
+            <span aria-hidden="true">/</span>
+            <span>{String(total).padStart(2, "0")}</span>
+          </p>
         </header>
 
-        {/* Progress indicator */}
-        <nav
-          aria-label={`Step ${currentIndex + 1} of ${total}`}
-          className="progress-bar"
-        >
-          {steps.map((_, i) => {
-            let cls = "progress-bar__dot";
-            if (i === currentIndex) cls += " progress-bar__dot--active";
-            else if (i < currentIndex) cls += " progress-bar__dot--done";
-            return <div key={i} className={cls} aria-hidden="true" />;
-          })}
+        <nav aria-label={`Step ${currentIndex + 1} of ${total}`} className="step-track">
+          {steps.map((_, index) => (
+            <span
+              key={index}
+              className={`step-track__segment${index < currentIndex ? " is-done" : ""}${index === currentIndex ? " is-current" : ""}`}
+              aria-hidden="true"
+            />
+          ))}
         </nav>
 
-        {/* Step counter for SR */}
         <p className="sr-only" aria-live="polite" aria-atomic="true">
           Step {currentIndex + 1} of {total}
         </p>
 
-        {/* Current step */}
-        <div
-          className="active-step"
-        >
-          <p
-            aria-live="polite"
-            aria-atomic="true"
-            className="active-step__text"
-          >
+        <section key={currentIndex} className="present-step" aria-label={`Step ${currentIndex + 1}`}>
+          <p className="eyebrow">Take a moment</p>
+          <p className="present-step__instruction" aria-live="polite" aria-atomic="true">
             {steps[currentIndex]}
           </p>
-        </div>
+        </section>
 
-        {/* Audio-first speech controls */}
-        {isAudioFirst && (
-          <div
-            className="activity-audio-controls"
-            role="group"
-            aria-label="Audio controls"
-          >
+        {session.mode === "audio-first" && (
+          <div className="audio-toolset" role="group" aria-label="Audio controls">
             <button
               id="btn-tts-speak"
-              className="btn-secondary"
+              className="quiet-control"
               aria-label="Speak current step"
               disabled={!speechSupported}
               onClick={speakCurrentStep}
               title={speechSupported ? "Speak the current step" : "Speech synthesis is not supported in this browser"}
             >
-              🔊 {speechState === "speaking" ? "Replay" : "Speak"}
+              <Icon name="speaker" size={18} />
+              {speechState === "speaking" ? "Replay" : "Listen"}
             </button>
             <button
               id="btn-tts-pause"
-              className="btn-secondary"
+              className="quiet-control"
               aria-label={speechState === "paused" ? "Resume speech" : "Pause speech"}
               disabled={!speechSupported || (speechState !== "speaking" && speechState !== "paused")}
               onClick={togglePause}
             >
-              {speechState === "paused" ? "▶ Resume" : "⏸ Pause"}
+              <Icon name={speechState === "paused" ? "play" : "pause"} size={17} />
+              {speechState === "paused" ? "Resume" : "Pause"}
             </button>
             <button
               id="btn-tts-stop"
-              className="btn-secondary"
+              className="quiet-control"
               aria-label="Stop speech"
               disabled={!speechSupported || (speechState !== "speaking" && speechState !== "paused")}
               onClick={stopSpeech}
             >
-              ⏹ Stop
+              <Icon name="stop" size={16} /> Stop audio
             </button>
             <span
               role="status"
               aria-live="polite"
               aria-atomic="true"
-              className={!speechSupported ? "activity-audio-controls__status" : "sr-only"}
+              className={!speechSupported ? "audio-toolset__status" : "sr-only"}
             >
               {!speechSupported
                 ? "Speech playback is not available in this browser. You can follow the written steps and use the buttons below."
@@ -200,20 +174,16 @@ export function ActiveActivity({ session, onComplete, onStop }: ActiveActivityPr
           </div>
         )}
 
-        {/* Step navigation */}
-        <div
-          className="activity-controls"
-        >
+        <div className="step-navigation">
           <button
             id="btn-prev-step"
-            className="btn-secondary"
-            onClick={goPrev}
+            className="quiet-control"
+            onClick={goPrevious}
             disabled={isFirst}
             aria-label="Go to previous step"
           >
-            ← Previous
+            <Icon name="arrow-left" size={18} /> Previous
           </button>
-
           {isLast ? (
             <button
               id="btn-complete-activity"
@@ -222,34 +192,28 @@ export function ActiveActivity({ session, onComplete, onStop }: ActiveActivityPr
                 stopSpeech();
                 onComplete();
               }}
-              aria-label="Complete activity"
+              aria-label="Complete quest"
             >
-              Complete ✓
+              Complete quest <Icon name="check" size={18} />
             </button>
           ) : (
-            <button
-              id="btn-next-step"
-              className="btn-primary"
-              onClick={goNext}
-              aria-label="Go to next step"
-            >
-              Next →
+            <button id="btn-next-step" className="btn-primary" onClick={goNext} aria-label="Go to next step">
+              Next <Icon name="arrow-right" size={18} />
             </button>
           )}
         </div>
 
-        {/* Stop button */}
-        <div className="activity-stop">
+        <div className="quest-exit">
           <button
             id="btn-stop-activity"
-            className="btn-secondary"
+            className="text-action text-action--secondary"
             onClick={() => {
               stopSpeech();
               onStop();
             }}
-            aria-label="Stop activity and go to feedback"
+            aria-label="Stop quest and go to feedback"
           >
-            Stop activity
+            Stop quest
           </button>
         </div>
       </div>

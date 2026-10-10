@@ -67,14 +67,14 @@ describe("validated built-in fallbacks", () => {
 
     const user = userEvent.setup();
     render(<App aiMode="local" />);
-    await user.click(screen.getByRole("button", { name: /start openair quest/i }));
+    await user.click(screen.getByRole("button", { name: /initialize exploration/i }));
     await user.click(screen.getByRole("radio", { name: /quiet/i }));
     await user.click(screen.getByRole("radio", { name: /10 min/i }));
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /choose surroundings/i }));
     await user.click(screen.getByRole("radio", { name: /garden/i }));
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /prepare my quest/i }));
 
-    expect(await screen.findByRole("heading", { name: "Your Environment" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Where are you heading outside?" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: unsafeFallback.title })).not.toBeInTheDocument();
   });
 });

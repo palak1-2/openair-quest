@@ -27,6 +27,8 @@ import { History } from "./pages/History";
 import { addHistoryItem } from "./storage/historyStore";
 import { getConfiguredAIMode } from "./ai/providerFactory";
 import type { ActivityRuntime, AIMode } from "./ai/providerFactory";
+import type { MissionGenerationStage } from "./ai/MockAIProvider";
+import { Icon } from "./Icon";
 
 import type {
   AppScreen,
@@ -69,6 +71,7 @@ const INITIAL_SESSION: SessionState = {
 export default function App({ aiMode = getConfiguredAIMode() }: { aiMode?: AIMode }): JSX.Element {
   const [screen, setScreen] = useState<AppScreen>("welcome");
   const [session, setSession] = useState<SessionState>(INITIAL_SESSION);
+  const [generationStage, setGenerationStage] = useState<MissionGenerationStage | null>(null);
 
   // ------------------------------------------------------------------
   // Navigation helpers
@@ -90,6 +93,7 @@ export default function App({ aiMode = getConfiguredAIMode() }: { aiMode?: AIMod
 
   function resetSession() {
     setSession(INITIAL_SESSION);
+    setGenerationStage(null);
     goTo("welcome");
   }
 
@@ -122,10 +126,12 @@ export default function App({ aiMode = getConfiguredAIMode() }: { aiMode?: AIMod
                 imageSelected: photo !== undefined,
                 preferencesReady: session.mode !== null && session.durationMinutes !== null,
               });
+              setGenerationStage(null);
               setSession((s) => ({ ...s, environment, photo }));
               goTo("generating");
             }}
             onBack={() => goTo("preferences")}
+            aiMode={aiMode}
           />
         );
 
@@ -134,6 +140,7 @@ export default function App({ aiMode = getConfiguredAIMode() }: { aiMode?: AIMod
           <Generating
             session={session}
             aiMode={aiMode}
+            onStage={setGenerationStage}
             onComplete={handleGenerationComplete}
             onError={handleGenerationError}
           />
@@ -144,7 +151,10 @@ export default function App({ aiMode = getConfiguredAIMode() }: { aiMode?: AIMod
           <Activity
             session={session}
             onStart={() => goTo("active-activity")}
-            onRestart={() => goTo("generating")}
+            onRestart={() => {
+              setGenerationStage(null);
+              goTo("generating");
+            }}
             onBack={() => goTo("environment")}
           />
         );
@@ -219,45 +229,37 @@ export default function App({ aiMode = getConfiguredAIMode() }: { aiMode?: AIMod
     goTo("environment");
   }, [goTo]);
 
-  return (
-    <>
-      {/* Skip-to-content link — first focusable element on every screen */}
-      <a
-        href="#main-content"
-        className="sr-only"
-        style={{
-          position: "fixed",
-          top: "var(--space-3)",
-          left: "var(--space-3)",
-          zIndex: 9999,
-          padding: "var(--space-2) var(--space-4)",
-          background: "var(--color-primary)",
-          color: "var(--color-bg)",
-          borderRadius: "var(--radius-md)",
-          fontWeight: "var(--font-weight-semi)",
-          // Override sr-only clip when focused
-        }}
-        onFocus={(e) => {
-          e.currentTarget.style.clip = "auto";
-          e.currentTarget.style.width = "auto";
-          e.currentTarget.style.height = "auto";
-          e.currentTarget.style.margin = "0";
-          e.currentTarget.style.overflow = "visible";
-          e.currentTarget.style.whiteSpace = "normal";
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.clip = "";
-          e.currentTarget.style.width = "";
-          e.currentTarget.style.height = "";
-          e.currentTarget.style.margin = "";
-          e.currentTarget.style.overflow = "";
-          e.currentTarget.style.whiteSpace = "";
-        }}
-      >
-        Skip to main content
-      </a>
+  const stateLabel: Record<AppScreen, string> = {
+    welcome: "A moment outdoors, made for you",
+    preferences: "Comfort comes first",
+    environment: "Start with the place around you",
+    generating: generationStage === "understanding"
+      ? "Understanding your surroundings"
+      : generationStage === "adapting"
+        ? "Adapting to your comfort"
+        : "Preparing your quest",
+    activity: "A field guide for right now",
+    "active-activity": "Take this one step at a time",
+    feedback: "Keep a moment from the day",
+    history: "Your outdoor journal",
+  };
 
-      {renderScreen()}
-    </>
+  return (
+    <div className="app-shell" data-screen={screen} data-stage={generationStage ?? "none"}>
+      <a href="#main-content" className="skip-link">Skip to main content</a>
+      <header className="brand-header">
+        <div className="brand-lockup" aria-label="OpenAir Quest, an outdoor companion">
+          <span className="brand-mark"><Icon name="tree" size={21} /></span>
+          <span className="brand-copy">
+            <span className="brand-name">OpenAir Quest</span>
+            <span className="brand-tagline">Outside, at your own pace.</span>
+          </span>
+        </div>
+        <p className="brand-state" aria-live="polite">{stateLabel[screen]}</p>
+      </header>
+      <div key={screen} className="screen-transition">
+        {renderScreen()}
+      </div>
+    </div>
   );
 }

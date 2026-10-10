@@ -1,194 +1,202 @@
-/**
- * src/pages/Environment.tsx
- *
- * Screen 3 — Environment
- *
- * User selects:
- *   - General environment (park | garden | campus | neighborhood | not-sure)
- *   - Optional photo upload (the deterministic mock provider does not analyze it)
- */
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { JSX, ChangeEvent } from "react";
 import type { EnvironmentOption } from "@/types";
+import type { AIMode } from "@/ai/providerFactory";
+import { Icon } from "@/Icon";
 
 interface EnvironmentProps {
   onComplete: (environment: EnvironmentOption, photo?: Blob) => void;
   onBack: () => void;
+  aiMode?: AIMode;
 }
 
-const ENVIRONMENTS: { value: EnvironmentOption; label: string; icon: string }[] = [
-  { value: "park", label: "Park", icon: "🌳" },
-  { value: "garden", label: "Garden", icon: "🌼" },
-  { value: "campus", label: "Campus", icon: "🏛️" },
-  { value: "neighborhood", label: "Neighborhood", icon: "🏘️" },
-  { value: "not-sure", label: "Not sure", icon: "🔍" },
+const ENVIRONMENTS: {
+  value: EnvironmentOption;
+  label: string;
+  description: string;
+  icon: "tree" | "flower" | "building" | "home" | "help";
+  reflection: string;
+}[] = [
+  { value: "park", label: "Park", description: "Open green space", icon: "tree", reflection: "Room to wander and notice" },
+  { value: "garden", label: "Garden", description: "Plants and flowers", icon: "flower", reflection: "Small details, close at hand" },
+  { value: "campus", label: "Campus", description: "A school or university", icon: "building", reflection: "A familiar place, seen anew" },
+  { value: "neighborhood", label: "Neighborhood", description: "Nearby paths and places", icon: "home", reflection: "Everyday surroundings, gently noticed" },
+  { value: "not-sure", label: "Not sure", description: "Keep the activity flexible", icon: "help", reflection: "A quest that can meet you anywhere" },
 ];
 
-export function Environment({ onComplete, onBack }: EnvironmentProps): JSX.Element {
+function formatFileSize(bytes: number): string {
+  return bytes < 1024 * 1024
+    ? `${Math.max(1, Math.round(bytes / 1024))} KB`
+    : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function Environment({
+  onComplete,
+  onBack,
+  aiMode = "mock",
+}: EnvironmentProps): JSX.Element {
   const [environment, setEnvironment] = useState<EnvironmentOption | null>(null);
-  const [photo, setPhoto] = useState<Blob | null>(null);
-  const [photoName, setPhotoName] = useState<string>("");
-  const [photoError, setPhotoError] = useState<string>("");
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoUrlRef = useRef<string | null>(null);
+  const selection = ENVIRONMENTS.find((item) => item.value === environment);
 
-  const canProceed = environment !== null;
+  useEffect(() => () => {
+    if (photoUrlRef.current) URL.revokeObjectURL(photoUrlRef.current);
+  }, []);
 
-  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     setPhotoError("");
-    const file = e.target.files?.[0];
+    const file = event.target.files?.[0];
     if (!file) return;
-
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-    if (!allowedTypes.includes(file.type)) {
-      setPhotoError("Please upload a JPEG, PNG, WebP, or GIF image.");
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+      setPhotoError("Choose a JPEG, PNG, WebP, or GIF image.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setPhotoError("The image must be smaller than 10 MB.");
       return;
     }
 
-    const maxBytes = 10 * 1024 * 1024; // 10 MB
-    if (file.size > maxBytes) {
-      setPhotoError("Image must be smaller than 10 MB.");
-      return;
-    }
-
+    if (photoUrlRef.current) URL.revokeObjectURL(photoUrlRef.current);
+    const nextUrl = typeof URL.createObjectURL === "function" ? URL.createObjectURL(file) : null;
+    photoUrlRef.current = nextUrl;
+    setPhotoUrl(nextUrl);
     setPhoto(file);
-    setPhotoName(file.name);
   }
 
-  function handleRemovePhoto() {
+  function removePhoto() {
+    if (photoUrlRef.current) URL.revokeObjectURL(photoUrlRef.current);
+    photoUrlRef.current = null;
+    setPhotoUrl(null);
     setPhoto(null);
-    setPhotoName("");
     setPhotoError("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   return (
-    <main className="page" id="main-content" aria-label="Select your environment">
-      <div className="container">
-        <header className="page__header">
-          <h1 className="page__title">Your Environment</h1>
+    <main
+      className="page environment-page"
+      id="main-content"
+      aria-label="Select your environment"
+      data-environment={environment ?? "unset"}
+    >
+      <div className="page-frame">
+        <header className="page__header page__header--left">
+          <p className="eyebrow">Step 02 <span aria-hidden="true">—</span> Surrounding context</p>
+          <h1 className="page__title">Where are you heading outside?</h1>
           <p className="page__subtitle">
-            Where are you? Select the option that best matches your surroundings.
+            Choose the place that feels closest. Your quest will take its cues from here.
           </p>
         </header>
 
-        {/* Environment selector */}
-        <section aria-labelledby="env-heading">
-          <h2 id="env-heading" className="sr-only">
-            Environment options
-          </h2>
-          <div
-            role="radiogroup"
-            aria-labelledby="env-heading"
-            className="choice-grid"
-            style={{ marginBottom: "var(--space-6)" }}
-          >
-            {ENVIRONMENTS.map(({ value, label, icon }) => {
-              const isSelected = environment === value;
-              return (
-                <label
-                  key={value}
-                  htmlFor={`env-${value}`}
-                  className={`choice-card choice-card--environment${isSelected ? " choice-card--selected" : ""}`}
-                >
-                  <input
-                    type="radio"
-                    id={`env-${value}`}
-                    name="environment"
-                    value={value}
-                    checked={isSelected}
-                    onChange={() => setEnvironment(value)}
-                    className="sr-only"
-                  />
-                  <span aria-hidden="true" className="choice-card__icon">{icon}</span>
-                  <span className="choice-card__label">{label}</span>
-                </label>
-              );
-            })}
-          </div>
-        </section>
-
-        <div className="divider" />
-
-        {/* Optional photo upload */}
-        <section aria-labelledby="photo-heading">
-          <h2 id="photo-heading" className="section-heading section-heading--compact">
-            Optional photo
-          </h2>
-          <p className="choice-card__description" style={{ marginBottom: "var(--space-4)" }}>
-            In local AI mode, an uploaded photo is processed by Ollama on this
-            device. In mock mode, photos are not analyzed. Activities can also
-            use your manual environment selection without a photo.
-          </p>
-
-          {photoError && (
-            <div className="banner banner--error" role="alert" aria-live="assertive" style={{ marginBottom: "var(--space-4)" }}>
-              {photoError}
-            </div>
-          )}
-
-          {!photo ? (
-            <label
-              htmlFor="photo-upload"
-              className="photo-upload"
-            >
-              <span aria-hidden="true" className="choice-card__icon">📷</span>
-              <span>Tap to upload a photo (optional)</span>
-              <span className="photo-upload__hint">JPEG, PNG, WebP or GIF · max 10 MB</span>
-              <input
-                type="file"
-                id="photo-upload"
-                ref={fileInputRef}
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                onChange={handleFileChange}
-                className="sr-only"
-                aria-describedby="photo-upload-desc"
-              />
-            </label>
-          ) : (
-            <div className="card photo-file">
-              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-                <span aria-hidden="true">🖼️</span>
-                <span className="photo-file__name">
-                  {photoName}
-                </span>
+        <div className="environment-layout">
+          <div className="environment-choices">
+            <section aria-labelledby="env-heading">
+              <h2 id="env-heading" className="sr-only">Environment options</h2>
+              <div role="radiogroup" aria-labelledby="env-heading" className="environment-list">
+                {ENVIRONMENTS.map(({ value, label, description, icon }) => {
+                  const selected = environment === value;
+                  return (
+                    <label
+                      key={value}
+                      htmlFor={`env-${value}`}
+                      className={`environment-choice${selected ? " is-selected" : ""}`}
+                    >
+                      <input
+                        type="radio"
+                        id={`env-${value}`}
+                        name="environment"
+                        value={value}
+                        checked={selected}
+                        onChange={() => setEnvironment(value)}
+                        className="sr-only"
+                      />
+                      <span className="environment-choice__icon"><Icon name={icon} size={22} /></span>
+                      <span className="environment-choice__copy">
+                        <span className="environment-choice__name">{label}</span>
+                        <span className="environment-choice__description">{description}</span>
+                      </span>
+                      <span className="environment-choice__indicator" aria-hidden="true">
+                        <Icon name="check" size={17} />
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
-              <button
-                id="btn-remove-photo"
-                className="btn-secondary"
-                onClick={handleRemovePhoto}
-                aria-label="Remove uploaded photo"
-                style={{ flexShrink: 0 }}
-              >
-                Remove
-              </button>
-            </div>
-          )}
+            </section>
 
-          <p id="photo-upload-desc" className="sr-only">
-            Optional image upload. In local AI mode, this image is processed only by Ollama on this device.
-          </p>
-        </section>
+            <section className="photo-context-input" aria-labelledby="photo-heading">
+              <div className="photo-context-input__heading">
+                <Icon name="camera" size={18} />
+                <h2 id="photo-heading">Feed local context <span>Optional</span></h2>
+              </div>
+              {photoError && <p className="form-error" role="alert">{photoError}</p>}
+              {!photo ? (
+                <label htmlFor="photo-upload" className="photo-prompt">
+                  <span className="photo-prompt__action">Choose a photo</span>
+                  <span className="photo-prompt__detail">Your photo stays on this device in Local AI mode.</span>
+                  <span className="photo-prompt__hint">JPEG, PNG, WebP, or GIF · up to 10 MB</span>
+                  <input
+                    type="file"
+                    id="photo-upload"
+                    ref={fileInputRef}
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={handleFileChange}
+                    className="sr-only"
+                    aria-label="Tap to upload a photo (optional)"
+                    aria-describedby="photo-runtime-truth"
+                  />
+                </label>
+              ) : (
+                <div className="selected-photo" aria-label={`Selected photo: ${photo.name}`}>
+                  {photoUrl
+                    ? <img src={photoUrl} alt="" className="selected-photo__image" />
+                    : <span className="selected-photo__fallback"><Icon name="camera" size={22} /></span>}
+                  <span className="selected-photo__details">
+                    <span className="selected-photo__name">{photo.name}</span>
+                    <span className="selected-photo__size">{formatFileSize(photo.size)} · on this device</span>
+                  </span>
+                  <button type="button" className="text-action" onClick={removePhoto}>Remove</button>
+                </div>
+              )}
+              <p className="photo-runtime-truth" id="photo-runtime-truth">
+                {aiMode === "local"
+                  ? "Local AI interprets the photo on this device. Your environment selection is used if the photo cannot be interpreted."
+                  : "Demo mode does not analyze photos; your environment selection will guide the quest."}
+              </p>
+            </section>
+          </div>
 
-        {/* Actions */}
-        <div className="page__actions">
+          <aside className="environment-impression" aria-live="polite" aria-label="Environment setting">
+            <span className="environment-impression__eyebrow">
+              {selection ? "Your setting" : "Begin with a place"}
+            </span>
+            <span className="environment-impression__icon">
+              <Icon name={selection?.icon ?? "tree"} size={46} />
+            </span>
+            <p className="environment-impression__name">{selection?.label ?? "Somewhere outside"}</p>
+            <p className="environment-impression__reflection">
+              {selection?.reflection ?? "Choose what feels closest. You can keep it flexible."}
+            </p>
+            <span className="environment-impression__horizon" aria-hidden="true" />
+          </aside>
+        </div>
+
+        <div className="page__actions page__actions--flow">
+          <button id="btn-back-environment" className="text-action" onClick={onBack}>
+            <Icon name="arrow-left" size={18} /> Back
+          </button>
           <button
             id="btn-continue-environment"
             className="btn-primary"
-            disabled={!canProceed}
-            onClick={() => {
-              if (environment) {
-                console.info("[OpenAir Quest][FLOW] Environment Continue clicked.", {
-                  imageSelected: photo !== null,
-                });
-                onComplete(environment, photo ?? undefined);
-              }
-            }}
-            aria-disabled={!canProceed}
+            disabled={!environment}
+            onClick={() => environment && onComplete(environment, photo ?? undefined)}
+            aria-disabled={!environment}
           >
-            Continue
-          </button>
-          <button id="btn-back-environment" className="btn-secondary" onClick={onBack}>
-            Back
+            Prepare my quest <Icon name="arrow-right" size={19} />
           </button>
         </div>
       </div>

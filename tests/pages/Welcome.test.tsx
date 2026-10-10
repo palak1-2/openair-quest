@@ -9,20 +9,20 @@ import userEvent from "@testing-library/user-event";
 import { Welcome } from "@/pages/Welcome";
 
 describe("Welcome page", () => {
-  it("renders the application name", () => {
+  it("renders the companion invitation", () => {
     render(<Welcome onStart={vi.fn()} />);
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("OpenAir Quest");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Your local AI outdoor companion.");
   });
 
-  it("renders the Start button", () => {
+  it("renders the exploration action", () => {
     render(<Welcome onStart={vi.fn()} />);
-    expect(screen.getByRole("button", { name: /start/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /initialize exploration/i })).toBeInTheDocument();
   });
 
   it("calls onStart when Start button is clicked", async () => {
     const onStart = vi.fn();
     render(<Welcome onStart={onStart} />);
-    await userEvent.click(screen.getByRole("button", { name: /start/i }));
+    await userEvent.click(screen.getByRole("button", { name: /initialize exploration/i }));
     expect(onStart).toHaveBeenCalledOnce();
   });
 

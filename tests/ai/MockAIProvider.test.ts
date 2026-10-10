@@ -4,7 +4,9 @@ import {
   MockLLMProvider,
   MockVisionProvider,
   generateMissionPipeline,
+  generateMissionPipelineWithFallback,
 } from "@/ai/MockAIProvider";
+import type { MissionGenerationStage } from "@/ai/MockAIProvider";
 import type { AccessibilityMode, EnvironmentOption, Mission, UserPreferences } from "@/types";
 import type { PersonalizationContext } from "@/types";
 
@@ -67,6 +69,32 @@ describe("Mock AI providers", () => {
 });
 
 describe("mission pipeline validation", () => {
+  it("reports preparation stages as the actual pipeline reaches them", async () => {
+    const stages: MissionGenerationStage[] = [];
+    await generateMissionPipelineWithFallback(
+      preferences("garden", "quiet", 10),
+      undefined,
+      undefined,
+      undefined,
+      (stage) => stages.push(stage),
+    );
+    expect(stages).toEqual(["understanding", "adapting", "preparing"]);
+  });
+
+  it("does not allow a progress listener failure to interrupt mission generation", async () => {
+    const mission = await generateMissionPipelineWithFallback(
+      preferences("garden", "quiet", 10),
+      undefined,
+      undefined,
+      undefined,
+      () => {
+        throw new Error("listener failed");
+      },
+    );
+    expect(mission.usedFallback).toBe(false);
+    expect(mission.mission.durationMinutes).toBe(10);
+  });
+
   it("returns generated valid output", async () => {
     const mission = await generateMissionPipeline(preferences("campus", "simple-steps", 20));
     expect(mission.title).toBe("Outdoor Noticing");

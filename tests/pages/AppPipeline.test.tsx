@@ -11,12 +11,12 @@ describe("mock AI activity flow", () => {
     const user = userEvent.setup();
     render(<App aiMode="mock" />);
 
-    await user.click(screen.getByRole("button", { name: /start openair quest/i }));
+    await user.click(screen.getByRole("button", { name: /initialize exploration/i }));
     await user.click(screen.getByRole("radio", { name: /audio-first/i }));
     await user.click(screen.getByRole("radio", { name: /5 min/i }));
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /choose surroundings/i }));
     await user.click(screen.getByRole("radio", { name: /park/i }));
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /prepare my quest/i }));
 
     expect(await screen.findByRole("heading", { name: "Listen and Notice" })).toBeInTheDocument();
     expect(screen.getByRole("note")).toHaveTextContent(
@@ -25,13 +25,13 @@ describe("mock AI activity flow", () => {
     expect(screen.getByText(/5-minute activity/i)).toBeInTheDocument();
     expect(screen.queryByText(/placeholder mission/i)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /start activity/i }));
+    await user.click(screen.getByRole("button", { name: /begin quest/i }));
     expect(screen.getByText("Pause in a comfortable place in the natural space.")).toBeInTheDocument();
     for (let step = 0; step < 4; step += 1) {
       await user.click(screen.getByRole("button", { name: /next/i }));
     }
     expect(screen.getByText("Finish whenever you feel ready.")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /complete activity/i }));
+    await user.click(screen.getByRole("button", { name: /complete quest/i }));
 
     await waitFor(() => expect(getHistory()).toHaveLength(1));
     const saved = getHistory()[0];
@@ -41,13 +41,13 @@ describe("mock AI activity flow", () => {
     expect(saved.completedAt).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: /comfortable/i }));
-    await user.click(screen.getByRole("button", { name: /submit feedback/i }));
-    await user.click(await screen.findByRole("button", { name: /view history/i }));
+    await user.click(screen.getByRole("button", { name: /^done/i }));
+    await user.click(await screen.findByRole("button", { name: /view your journal/i }));
     expect(await screen.findByRole("heading", { name: "Listen and Notice" })).toBeInTheDocument();
     expect(screen.getByText(/comfortable/i)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /clear history/i }));
-    expect(screen.getByText(/no activities yet/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /clear journal/i }));
+    expect(screen.getByText(/your completed outdoor experiences will appear here/i)).toBeInTheDocument();
     expect(getHistory()).toEqual([]);
   });
 
@@ -55,16 +55,16 @@ describe("mock AI activity flow", () => {
     const user = userEvent.setup();
     render(<App aiMode="mock" />);
 
-    await user.click(screen.getByRole("button", { name: /start openair quest/i }));
+    await user.click(screen.getByRole("button", { name: /initialize exploration/i }));
     await user.click(screen.getByRole("radio", { name: /quiet/i }));
     await user.click(screen.getByRole("radio", { name: /10 min/i }));
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /choose surroundings/i }));
     await user.click(screen.getByRole("radio", { name: /garden/i }));
     await user.upload(
       screen.getByLabelText(/tap to upload a photo/i),
       new File(["garden image"], "garden.png", { type: "image/png" }),
     );
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /prepare my quest/i }));
 
     expect(await screen.findByRole("heading", { name: "Outdoor Noticing" })).toBeInTheDocument();
     expect(screen.getByRole("note")).toHaveTextContent(
